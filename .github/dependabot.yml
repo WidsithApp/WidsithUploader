@@ -1,0 +1,30 @@
+# Dependabot opens a pull request when a dependency has a newer version, once a week, so the app
+# doesn't fall behind on fixes without anyone noticing. CI runs the tests on each one.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      all:
+        patterns: ['*']
+    ignore:
+      # The type checker (svelte-check) runs TypeScript 7 only beside TypeScript 6 and with a flag
+      # of its own; until it supports 7 plainly, a group with it in always fails.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # The types follow the Node the app is built and tested with, 22, not the newest Node.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    groups:
+      all:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
