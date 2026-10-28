@@ -1,0 +1,14 @@
+{
+	"Endpoint": "https://wus.codesigning.azure.net",
+	"CodeSigningAccountName": "reflectivegrove-signing",
+	"CertificateProfileName": "widsith-uploader",
+	"ExcludeCredentials": [
+		"ManagedIdentityCredential",
+		"WorkloadIdentityCredential",
+		"SharedTokenCacheCredential",
+		"VisualStudioCredential",
+		"VisualStudioCodeCredential",
+		"AzureDeveloperCliCredential",
+		"InteractiveBrowserCredential"
+	]
+}

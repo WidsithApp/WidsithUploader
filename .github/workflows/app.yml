@@ -1,0 +1,42 @@
+# The app's checks that need no Windows machine: the type check and the tests, which run the
+# engine against a made-up computer and a made-up site. The tests that compare the app with the
+# site's source need WIDSITH_SITE, so they are skipped here.
+
+name: App
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      # Known flaws in what the window ships with. Development tools don't ship.
+      - run: npm audit --omit=dev --audit-level=high
+
+  # Known flaws in the Rust crates the app is built from, read off the lockfile; needs no Windows
+  # machine. A finding fails the run until the crate is updated.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: src-tauri

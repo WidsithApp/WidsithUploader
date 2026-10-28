@@ -1,0 +1,289 @@
+/* Global styles, using the site's tokens and values; copy changes over from the site as they are.
+   Colour roles: gold for the main action on a view, accent for other actions, seal red for the
+   current tab and anything that needs attention. */
+
+:root {
+	--paper: #f4f0e6;
+	--paper-2: #ebe5d6;
+	--card: #fcfaf4;
+	--ink: #2b2433;
+	--ink-2: #574b5d;
+	--muted: #837a86;
+	--rule: rgb(43 36 51 / 0.12);
+	--rule-2: rgb(43 36 51 / 0.22);
+	--hover: rgb(43 36 51 / 0.05);
+	--gold: #a86f14;
+	--gold-ink: #fff8e8;
+	--gold-wash: rgb(168 111 20 / 0.12);
+	--accent: #2f5877;
+	--accent-ink: #f4f7fb;
+	--accent-wash: rgb(47 88 119 / 0.12);
+	--seal: #b3402b;
+	--good: #3f8f4a;
+	--bad: #b3402b;
+	/* The game's item grades, deepened to read on this paper. */
+	--q-legendary: #c96100;
+	--q-epic: #8a2fc4;
+	--q-rare: #1f64c0;
+	--q-uncommon: #3f8f4a;
+	--q-common: var(--ink-2);
+	/* A class colour on this paper: mixed toward the ink, or priest white and rogue yellow vanish. */
+	--class-share: 52%;
+	--display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+	--body: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+	/* Fast: hovers and tab underlines. Base: changes within the window. Slow: things appearing. */
+	--t-fast: 150ms;
+	--t-base: 220ms;
+	--t-slow: 360ms;
+	--ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--paper: #121626;
+		--paper-2: #141829;
+		--card: #1a1f33;
+		--ink: #f2e8d0;
+		--ink-2: #cdc2a9;
+		--muted: #8f8ca3;
+		--rule: rgb(242 232 208 / 0.1);
+		--rule-2: rgb(242 232 208 / 0.2);
+		--hover: rgb(242 232 208 / 0.045);
+		--gold: #e6b457;
+		--gold-ink: #20170a;
+		--gold-wash: rgb(230 180 87 / 0.12);
+		--accent: #8fb4e8;
+		--accent-ink: #0f1a2a;
+		--accent-wash: rgb(143 180 232 / 0.13);
+		--seal: #ef7a5c;
+		--good: #7fd08a;
+		--bad: #f0806f;
+		--q-legendary: #ff8000;
+		--q-epic: #a335ee;
+		--q-rare: #4a9bff;
+		--q-uncommon: #6fbf63;
+		--class-share: 100%;
+		color-scheme: dark;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--t-fast: 0ms;
+		--t-base: 0ms;
+		--t-slow: 0ms;
+	}
+	* {
+		transition: none !important;
+		animation: none !important;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--body);
+	font-size: 15.5px;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	user-select: none;
+	cursor: default;
+}
+
+#app {
+	height: 100%;
+}
+
+h1,
+h2,
+h3,
+p,
+ul {
+	margin: 0;
+	padding: 0;
+}
+
+ul {
+	list-style: none;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+}
+
+button:disabled {
+	cursor: not-allowed;
+	opacity: 0.45;
+}
+
+:focus-visible {
+	outline: 2px solid var(--gold);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+::selection {
+	background: var(--gold-wash);
+	color: var(--ink);
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--ink) 25%, transparent) transparent;
+}
+
+/* Fraunces at its optical size; italic is for the wordmark only. */
+.display {
+	font-family: var(--display);
+	font-optical-sizing: auto;
+	letter-spacing: -0.01em;
+}
+
+/* Small uppercase labels. */
+.caption {
+	font-size: 11px;
+	line-height: 1rem;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* Tabular numbers. */
+.figures {
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: 'tnum', 'lnum';
+}
+
+/* Card surface. */
+.sheet {
+	background: var(--card);
+	border: 1px solid var(--rule);
+	border-radius: 12px;
+	box-shadow:
+		0 1px 0 color-mix(in oklab, var(--ink) 6%, transparent),
+		0 10px 24px -14px color-mix(in oklab, var(--ink) 35%, transparent);
+}
+
+/* Buttons, matching the site: `btn-main` (gold) for a view's main action, `btn-alt` (accent
+   outline) for other actions, `btn` for a plain one. */
+.btn,
+.btn-main,
+.btn-alt {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	border-radius: 8px;
+	padding: 10px 16px;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.25;
+	white-space: nowrap;
+}
+
+.btn {
+	border: 1px solid var(--rule-2);
+	background: var(--card);
+	color: var(--ink);
+	transition:
+		transform var(--t-fast) var(--ease-out),
+		box-shadow var(--t-fast) var(--ease-out);
+}
+.btn:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px rgb(0 0 0 / 0.18);
+}
+.btn:active:not(:disabled) {
+	transform: none;
+}
+
+.btn-main {
+	border: 1px solid #c8973f;
+	background: linear-gradient(180deg, #f0c470, var(--gold));
+	color: var(--gold-ink);
+	box-shadow:
+		0 2px 0 #8d6417,
+		0 6px 14px rgb(230 180 87 / 0.25);
+	transition:
+		transform var(--t-fast) var(--ease-out),
+		box-shadow var(--t-fast) var(--ease-out);
+}
+.btn-main:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow:
+		0 3px 0 #8d6417,
+		0 8px 18px rgb(230 180 87 / 0.3);
+}
+.btn-main:active:not(:disabled) {
+	transform: translateY(1px);
+	box-shadow:
+		0 1px 0 #8d6417,
+		0 3px 8px rgb(230 180 87 / 0.2);
+}
+
+.btn-alt {
+	border: 1px solid var(--accent);
+	background: transparent;
+	color: var(--accent);
+	transition:
+		transform var(--t-fast) var(--ease-out),
+		background var(--t-fast) var(--ease-out);
+}
+.btn-alt:hover:not(:disabled) {
+	background: var(--accent-wash);
+	transform: translateY(-1px);
+}
+.btn-alt:active:not(:disabled) {
+	transform: none;
+}
+
+/* The trailing "opens elsewhere" icon. */
+.btn > svg:last-child,
+.btn-main > svg:last-child,
+.btn-alt > svg:last-child,
+.link > svg:last-child {
+	margin-left: 0.3em;
+	vertical-align: -0.1em;
+	opacity: 0.8;
+}
+
+/* Inline text link. */
+.link {
+	color: var(--accent);
+	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in oklab, var(--accent) 45%, transparent);
+	text-underline-offset: 3px;
+	transition: text-decoration-color var(--t-fast) var(--ease-out);
+}
+.link:hover:not(:disabled) {
+	text-decoration-color: currentColor;
+}
+.link.quiet {
+	color: var(--muted);
+	font-weight: 400;
+}
+.link.quiet:hover:not(:disabled) {
+	color: var(--ink);
+}
+
+/* Utility classes used by Logo.svelte, which is shared with the site. */
+.shrink-0 {
+	flex-shrink: 0;
+}
+.overflow-visible {
+	overflow: visible;
+}

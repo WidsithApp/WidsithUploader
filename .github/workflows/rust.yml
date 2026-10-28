@@ -1,0 +1,42 @@
+# The Windows side: formatting and the Rust tests, on Windows because that is what the app is built
+# for. Only when the Rust code changes, since a Windows machine counts double against the free
+# minutes. The app embeds its window when it compiles, so the window is built first.
+
+name: Rust
+
+on:
+  pull_request:
+    paths: ['src-tauri/**', '.github/workflows/rust.yml']
+  push:
+    branches: [main]
+    paths: ['src-tauri/**', '.github/workflows/rust.yml']
+
+concurrency:
+  group: rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: cargo fmt --check
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
+      # The release build's own behaviour (the one site, the allow-list) has tests behind the feature.
+      - run: cargo test --features public
+        working-directory: src-tauri

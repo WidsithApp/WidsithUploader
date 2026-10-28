@@ -1,0 +1,23 @@
+Widsith Uploader
+Copyright (c) 2026 Reflective Grove LLC. All rights reserved.
+
+This app is free to download and use on computers you own or control, and its
+source code is open for anyone to read. No licence to copy, modify,
+redistribute or create derivative works from it is granted without written
+permission from Reflective Grove LLC.
+
+The app reads the recordings the Widsith addon writes and sends them to
+widsith.app for the characters you have chosen to keep. It checks for a newer
+version of itself and installs one when you ask, or by itself when it has been
+left alone for a while. Using it is also governed by the Terms of Service and
+the Privacy page at https://widsith.app/terms and https://widsith.app/privacy.
+
+This app is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and non-infringement. In no event shall
+Reflective Grove LLC be liable for any claim, damages or other liability
+arising from the app or its use.
+
+World of Warcraft and Blizzard Entertainment are trademarks or registered
+trademarks of Blizzard Entertainment, Inc. Widsith is a fan project and is not
+made, endorsed or supported by Blizzard Entertainment.

@@ -1,0 +1,25 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "release",
+	"description": "What the window may ask for in a build that is handed out: the same as default.json, but requests go to the one real site and nowhere else, and the browser is opened only on it. Chosen by tauri.release.conf.json; a build made without it keeps default.json, which also admits a local or preview copy of the site for testing.",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"core:window:allow-show",
+		"core:window:allow-hide",
+		"core:window:allow-set-focus",
+		{
+			"identifier": "http:default",
+			"allow": [{ "url": "https://widsith.app/*" }]
+		},
+		{
+			"identifier": "opener:allow-open-url",
+			"allow": [{ "url": "https://widsith.app/*" }]
+		},
+		"notification:default",
+		"autostart:allow-enable",
+		"autostart:allow-disable",
+		"autostart:allow-is-enabled",
+		"dialog:allow-open"
+	]
+}
