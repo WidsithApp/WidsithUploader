@@ -18,7 +18,7 @@ const OTHER = { id: '87654321' };
 /** The site's class icons, as it hands them to a linked computer. */
 const ICONS = 'https://aap4obmj7p3arvth.public.blob.vercel-storage.com/class-icons/v1';
 
-const FOREVER = { flavor: '_forever_', game: 'forever', gameLabel: 'WoW Forever Beta' } as const;
+const FOREVER = { flavor: '_forever_', game: 'forever', gameLabel: 'WoW Forever' } as const;
 const RETAIL = { flavor: '_retail_', game: 'retail', gameLabel: 'Retail' } as const;
 
 function character(partial: Partial<CharacterView> & { name: string }): CharacterView {
