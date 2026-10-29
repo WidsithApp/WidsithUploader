@@ -29851,7 +29851,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-rustls-webpki 0.103.15
+rustls-webpki 0.103.16
 Licence: ISC
 Source: https://github.com/rustls/webpki
 ==============================================================================
@@ -41330,7 +41330,7 @@ Portions of ICU4X may have been adapted from ICU4C and/or ICU4J.
 ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines Corporation and others.
 
 ==============================================================================
-tokio 1.53.2
+tokio 1.54.1
 Licence: MIT
 Authors: Tokio Contributors <team@tokio.rs>
 Source: https://github.com/tokio-rs/tokio
@@ -45325,7 +45325,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-webpki-roots 1.0.9
+webpki-roots 1.0.11
 Licence: CDLA-Permissive-2.0
 Source: https://github.com/rustls/webpki-roots
 ==============================================================================
