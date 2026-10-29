@@ -138,6 +138,12 @@ interface Sending {
 	sentAt: number | null;
 	/** Sessions were sent but the site never finished reading them. */
 	owesDone?: boolean;
+	/**
+	 * Sessions the site called too large to take, by start time, with the text length each had
+	 * then. Left out of every later sending until one has grown, which only an open session can;
+	 * the card says so. Missing when there are none.
+	 */
+	tooLarge?: Record<string, number>;
 }
 
 /**
@@ -258,6 +264,15 @@ const EMPTY: Persisted = {
 	lookedAt: null,
 	paused: false
 };
+
+/** What the card says of sessions the site won't take for their size; null when there are none. */
+function tooLargeNote(sending: Sending | null): string | null {
+	const n = Object.keys(sending?.tooLarge ?? {}).length;
+	if (n === 0) return null;
+	return n === 1
+		? `One session is too large for ${SITE_NAME} to take and stays on this PC. Everything else is sent.`
+		: `${n} sessions are too large for ${SITE_NAME} to take and stay on this PC. Everything else is sent.`;
+}
 
 /** The games' names, for a character the site doesn't keep yet. */
 const GAME_LABELS: Record<Game, string> = {
@@ -1301,6 +1316,7 @@ export class Engine {
 				sharing,
 				fresh,
 				owesDone: sending.owesDone,
+				tooLarge: sending.tooLarge,
 				onProgress: (sent, total) => {
 					runtime.progress = { sent, total };
 					this.#publish();
@@ -1311,6 +1327,10 @@ export class Engine {
 				sending.sentModified = record.modified;
 				sending.sentAt = this.#host.now();
 				sending.owesDone = false;
+				sending.tooLarge =
+					outcome.tooLarge.length > 0
+						? Object.fromEntries(outcome.tooLarge.map((t) => [String(t.serverTime), t.length]))
+						: undefined;
 				runtime.fails = 0;
 				runtime.retryAt = undefined;
 				runtime.message = outcome.refused
@@ -1544,7 +1564,7 @@ export class Engine {
 			progress: runtime.sending ? (runtime.progress ?? null) : null,
 			sentAt: sending?.sentAt ?? null,
 			removedAt: removed && guid ? (this.#state.removed[guid] ?? null) : null,
-			message: record?.unreadable ?? runtime.message ?? null,
+			message: record?.unreadable ?? runtime.message ?? tooLargeNote(sending),
 			pageUrl:
 				kept && guid
 					? `${this.#host.server}${kept.href ?? `/character/${encodeURIComponent(guid)}`}`

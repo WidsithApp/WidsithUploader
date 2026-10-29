@@ -99,6 +99,8 @@ export class FakeSite {
 	brokenStore = false;
 	/** The next `done` fails. */
 	failDone = false;
+	/** Sessions, by start time, the site answers are too large to take. */
+	tooLarge = new Set<number>();
 	/** Where the class icons are, as the site says; null when it has none. */
 	classIcons: string | null = 'https://art.test/classes';
 	/** What a kept character's card shows, by GUID, over the site's usual answer. */
@@ -267,6 +269,9 @@ export class FakeSite {
 			if (!linked()) return answer(401, { ok: false, message: 'Sign in first.' });
 			const kept = this.kept.get(searchParams.get('guid') ?? '');
 			if (!kept) return answer(403, { ok: false, message: 'That character isn’t yours.' });
+			if (this.tooLarge.has(Number(searchParams.get('serverTime')))) {
+				return answer(413, { ok: false, message: 'That session is too large.' });
+			}
 			if (this.brokenStore) {
 				return {
 					status: 500,

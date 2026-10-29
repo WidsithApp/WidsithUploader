@@ -652,6 +652,38 @@ describe('a kept character', () => {
 		expect(site.kept.get(SEVRA)?.sessions.size).toBe(1);
 	});
 
+	it('leaves out a session the site calls too large, sends the rest, and tries it again only once it has grown', async () => {
+		const { engine, site, host } = await started();
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 2], [T + 9000, 4]]));
+		site.tooLarge.add(T + 5000);
+		const doneBefore = site.kept.get(SEVRA)?.done ?? 0;
+		host.wait(MINUTE);
+		await engine.tick();
+		// The other two went and the site finished reading; the card says one stays here.
+		expect(site.kept.get(SEVRA)?.sessions.size).toBe(2);
+		expect(site.kept.get(SEVRA)?.done).toBe(doneBefore + 1);
+		expect(engine.view.characters[0]).toMatchObject({ status: 'kept', upToDate: true });
+		expect(engine.view.characters[0].message).toMatch(/One session is too large/);
+		// Nothing is asked or sent again while the file is as it was.
+		const before = site.requests.length;
+		host.wait(TIMING.retryMax + 1);
+		await engine.tick();
+		expect(site.requests.length).toBe(before);
+		// The file changes elsewhere: the large session, unchanged, isn't packed and sent again.
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 2], [T + 9000, 4], [T + 12000, 1]]));
+		host.wait(MINUTE);
+		await engine.tick();
+		expect(site.kept.get(SEVRA)?.sessions.size).toBe(3);
+		expect(engine.view.characters[0].message).toMatch(/One session is too large/);
+		// Grown, it is tried once more; the site takes it now.
+		site.tooLarge.delete(T + 5000);
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 6], [T + 9000, 4], [T + 12000, 1]]));
+		host.wait(MINUTE);
+		await engine.tick();
+		expect(site.kept.get(SEVRA)?.sessions.size).toBe(4);
+		expect(engine.view.characters[0]).toMatchObject({ upToDate: true, message: null });
+	});
+
 	it('finishes later when the sessions went up but the site never read them', async () => {
 		const { engine, site, host } = await linked();
 		site.failDone = true;
