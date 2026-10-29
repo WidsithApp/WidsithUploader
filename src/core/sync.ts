@@ -20,6 +20,11 @@ export interface SyncOptions {
 	fresh?: boolean;
 	/** The last attempt sent sessions but never finished: finish even if nothing is left to send. */
 	owesDone?: boolean;
+	/**
+	 * Sessions the site has called too large, by start time, with the text length they had then:
+	 * one still that long is not sent again; one that has grown is tried once more.
+	 */
+	tooLarge?: Record<string, number>;
 	onProgress?: (sent: number, total: number) => void;
 }
 
@@ -33,7 +38,14 @@ export type SyncProblem =
 	| 'failed';
 
 export type SyncOutcome =
-	| { ok: true; sent: number; refused: number; sharing: Sharing }
+	| {
+			ok: true;
+			sent: number;
+			refused: number;
+			/** Sessions the site won't take for their size, left out; the rest went. */
+			tooLarge: { serverTime: number; length: number }[];
+			sharing: Sharing;
+	  }
 	/** Its player removed it on the site, when said (ms): nothing was sent. */
 	| { ok: false; reason: 'removed'; removedAt: number | null; message: string; sent: number }
 	| { ok: false; reason: SyncProblem; message: string; sent: number };
@@ -122,17 +134,29 @@ export async function syncRecording(
 		let refused = 0;
 		let failure: string | null = null;
 		let next = 0;
+		const tooLarge: { serverTime: number; length: number }[] = [];
 		options.onProgress?.(0, sending.length);
 		// A few at a time: each is a round trip, and sessions don't depend on one another.
 		const lane = async () => {
 			while (failure === null && next < sending.length) {
 				const session = sending[next++];
+				// The site won't take a session over its size limit. That is this session's answer, not
+				// the recording's: it is left out, remembered, and the rest goes on. One the site called
+				// too large before, and that hasn't grown since, isn't packed and sent again.
+				if (options.tooLarge?.[String(session.serverTime)] === session.text.length) {
+					tooLarge.push({ serverTime: session.serverTime, length: session.text.length });
+					continue;
+				}
 				const answer = await api.putSession(
 					guid,
 					session.serverTime,
 					await tools.gzip(session.text)
 				);
 				if (!answer.ok) {
+					if (answer.status === 413) {
+						tooLarge.push({ serverTime: session.serverTime, length: session.text.length });
+						continue;
+					}
 					failure = answer.message;
 					return;
 				}
@@ -154,7 +178,7 @@ export async function syncRecording(
 				};
 			}
 		}
-		return { ok: true, sent, refused, sharing: plan.sharing };
+		return { ok: true, sent, refused, tooLarge, sharing: plan.sharing };
 	} catch (cause) {
 		if (cause instanceof Unlinked) {
 			return { ok: false, reason: 'unlinked', message: cause.message, sent };

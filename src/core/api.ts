@@ -272,7 +272,7 @@ export class Api {
 		guid: string,
 		serverTime: number,
 		gz: Uint8Array<ArrayBuffer>
-	): Promise<{ ok: true; result: string } | { ok: false; message: string }> {
+	): Promise<{ ok: true; result: string } | { ok: false; status: number; message: string }> {
 		const response = await this.#fetch(
 			`${this.server}/api/uploads/session?guid=${encodeURIComponent(guid)}&serverTime=${serverTime}`,
 			{
@@ -286,9 +286,11 @@ export class Api {
 		if (body.ok === true) {
 			return { ok: true, result: typeof body.result === 'string' ? body.result : 'stored' };
 		}
-		// The site's own refusals say why. Anything else is the site failing, not the session.
+		// The site's own refusals say why. Anything else is the site failing, not the session. The
+		// status tells a refusal of this one session (413, too large) from the site failing.
 		return {
 			ok: false,
+			status: response.status,
 			message:
 				body.ok === false && typeof body.message === 'string'
 					? body.message
