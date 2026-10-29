@@ -106,7 +106,9 @@ A release is built with `npm run release`, or `npm run ship -- <version>`, which
 
 ## Licence
 
-All rights reserved, Reflective Grove LLC; the source is open for anyone to read, and the terms are in `LICENSE.txt`. The installer shows it on a first install and puts a copy beside the app. Using the app is also covered by the site's Terms of Service and Privacy page, which the window says before linking and under About.
+All rights reserved, Reflective Grove LLC; the source is open for anyone to read, and the terms are in `LICENSE.txt`. The installer shows it on a first install and puts a copy beside the app.
+
+The official app is the signed installer from widsith.app, and installed copies update themselves only from there. A copy from anywhere else, one someone else built from this source, or a changed one, isn't ours: we can't support it and aren't responsible for what it does. Using the app is also covered by the site's Terms of Service and Privacy page, which the window says before linking and under About.
 
 The app is built from open-source works: the Rust crates compiled into it, the npm packages in its window's code, its two fonts, and the Phosphor icons it draws. Their licences are collected in `THIRD-PARTY-NOTICES.txt`, which `npm run notices` writes from the Rust and npm dependencies as installed, and the installer puts it beside the app too.
 

@@ -6,6 +6,13 @@ source code is open for anyone to read. No licence to copy, modify,
 redistribute or create derivative works from it is granted without written
 permission from Reflective Grove LLC.
 
+The official copies of this app are the installers Reflective Grove LLC
+publishes at https://widsith.app, signed with Reflective Grove LLC's
+certificate; installed copies update themselves only from there. A copy
+obtained anywhere else, built by anyone else from this source, or changed from
+those, is not Reflective Grove LLC's. The terms here still bind it, but no
+support is given for it and no responsibility is accepted for what it does.
+
 The app reads the recordings the Widsith addon writes and sends them to
 widsith.app for the characters you have chosen to keep. It checks for a newer
 version of itself and installs one when you ask, or by itself when it has been
