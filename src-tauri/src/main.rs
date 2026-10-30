@@ -972,8 +972,23 @@ mod tests {
 
     #[test]
     fn the_pause_item_says_what_it_will_do() {
-        assert_eq!(pause_label(false), "Pause uploading");
-        assert_eq!(pause_label(true), "Resume uploading");
+        assert_eq!(pause_label(false), "Pause");
+        assert_eq!(pause_label(true), "Resume");
+    }
+
+    #[test]
+    fn the_menu_pictures_are_pictures_the_size_windows_draws_them() {
+        for (bytes, file) in [
+            (MENU_OPEN_ICON, "menu-open.png"),
+            (MENU_PAUSE_ICON, "menu-pause.png"),
+            (MENU_RESUME_ICON, "menu-resume.png"),
+        ] {
+            let icon =
+                Image::from_bytes(bytes).unwrap_or_else(|_| panic!("icons/{file} should be a PNG"));
+            assert_eq!((icon.width(), icon.height()), (16, 16), "icons/{file}");
+        }
+        assert!(pause_icon(false).is_some() && pause_icon(true).is_some());
+        assert_ne!(MENU_PAUSE_ICON, MENU_RESUME_ICON);
     }
 
     #[test]
