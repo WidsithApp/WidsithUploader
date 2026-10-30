@@ -47,7 +47,7 @@ These aren't promises resting on good behaviour alone. The window can't open fil
 
 The app shows a notification only when there is something for you to do, and only once for each thing: the site has unlinked this computer, the site has turned a character away for a reason you can see to, another account has started playing on this computer, or a newer version of the addon is out than the one in your game. Anything else, such as the site not answering, is tried again a little later, quietly.
 
-Closing the window leaves the app in the tray, where its icon is the flame alone, and clicking it opens the window again. The tray's menu has three items: Open Widsith Uploader, Pause uploading and Quit. While paused the app still notices new play and reads it, so the window stays current, but it sends nothing, asks the site nothing and shows no notification; the tray's flame turns grey for as long as it lasts, and resuming sends whatever is owed. The pause is remembered when the app starts again.
+Closing the window leaves the app in the tray, where its icon is the flame alone, and clicking it opens the window again. Right-clicking it gives a short menu: Open, with the flame beside it; Pause, which reads Resume while paused, each with its own icon; and Quit. While paused the app still notices new play and reads it, so the window stays current, but it sends nothing, asks the site nothing and shows no notification; the tray's flame turns grey for as long as it lasts, and resuming sends whatever is owed. The pause is remembered when the app starts again.
 
 ## Self-update
 
