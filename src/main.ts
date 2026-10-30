@@ -24,6 +24,13 @@ async function copy(text: string): Promise<boolean> {
 	}
 }
 
+// The colours follow Windows' light or dark mode (app.css). The flame, the site's own drawing,
+// reads the site's mark for night on the page, so the page carries it too.
+const night = matchMedia('(prefers-color-scheme: dark)');
+const markTheme = () => (document.documentElement.dataset.theme = night.matches ? 'dark' : 'light');
+markTheme();
+night.addEventListener('change', markTheme);
+
 /** Inside the app, or opened in an ordinary browser to be looked at. */
 const inApp = '__TAURI_INTERNALS__' in window;
 

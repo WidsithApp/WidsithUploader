@@ -18,9 +18,11 @@ export const SHARED = [
 		theirs: 'src/lib/site/Logo.svelte',
 		ours: '../src/ui/Logo.svelte',
 		comment: [
-			"The Widsith flame from the site's header: one outline drawn four times, scaled in from the",
-			'base, dark to light (three times under 24 px, where the fourth turns to mush). Animation stops',
-			'under reduced motion. Copied from the site by `npm run shared`; a test fails if they drift.'
+			"The Widsith mark from the site's header: one outline drawn four times, scaled in from the",
+			'base, dark to light (three times under 24 px, where the fourth turns to mush). From 32 px it',
+			'stands on a small map, a dashed road winding in to its base between contour lines, fading out',
+			'before any edge shows; `map={false}` draws the flame alone. Animation stops under reduced',
+			'motion. Copied from the site by `npm run shared`; a test fails if they drift.'
 		]
 	}
 ];

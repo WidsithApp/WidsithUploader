@@ -1,5 +1,7 @@
 <script lang="ts">
-	// The whole window. Not linked, it says what the app is and offers the one thing to do; while
+	// The whole window. A new install greets the player first, once: whether the app starts with
+	// Windows, and where it goes when the window is closed. Not linked, it says what the app is and
+	// offers the one thing to do; while
 	// linking, the code to check against the browser; linked, it asks once how new characters are
 	// kept, then has two views, the characters and the settings. A computer with more than one
 	// account shows them above the characters, one at a time: when the window is shown it opens on
@@ -10,6 +12,7 @@
 	import Accounts from './Accounts.svelte';
 	import Cards from './Cards.svelte';
 	import type { Controller, Shell } from './controller.ts';
+	import Greeting from './Greeting.svelte';
 	import Header, { type Tab } from './Header.svelte';
 	import Icon from './Icon.svelte';
 	import Linking from './Linking.svelte';
@@ -101,8 +104,10 @@
 	}
 
 	const host = $derived(new URL(shell.server).host);
-	/** The two views are offered once the first look is done, unless the one-time start is up. */
-	const settled = $derived(view !== null && view.ready && !view.setup && !view.linking);
+	/** The two views are offered once the first look is done, unless a one-time screen is up. */
+	const settled = $derived(
+		view !== null && view.ready && !view.greeting && !view.setup && !view.linking
+	);
 </script>
 
 <div class="frame">
@@ -116,7 +121,15 @@
 	/>
 
 	<main>
-		{#if !view || !view.ready}
+		{#if view?.greeting}
+			<Greeting
+				ontaskbar={shell.openTaskbarSettings}
+				oncontinue={async (starts) => {
+					await shell.setStartsWithWindows(starts).catch(() => {});
+					await controller.greet();
+				}}
+			/>
+		{:else if !view || !view.ready}
 			<p class="lead" role="status">Looking for your recordings.</p>
 		{:else}
 			{#if view.notice}
@@ -172,11 +185,7 @@
 						(c) => c.account === of || (c.account === null && oneLink)
 					)}
 					onswitch={(key, on) => controller.setUploading(key, on)}
-					onstart={async () => {
-						// Starting sets the app to start with Windows too; Settings can still turn it off.
-						await shell.setStartsWithWindows(true).catch(() => {});
-						await controller.beginUploading(of);
-					}}
+					onstart={() => controller.beginUploading(of)}
 				/>
 			{:else if tab === 'settings'}
 				<Settings {view} {controller} {shell} {folderNote} onaddfolder={addFolder} />

@@ -1,9 +1,16 @@
 <script lang="ts">
-	// The Widsith flame from the site's header: one outline drawn four times, scaled in from the
-	// base, dark to light (three times under 24 px, where the fourth turns to mush). Animation stops
-	// under reduced motion. Copied from the site by `npm run shared`; a test fails if they drift.
+	// The Widsith mark from the site's header: one outline drawn four times, scaled in from the
+	// base, dark to light (three times under 24 px, where the fourth turns to mush). From 32 px it
+	// stands on a small map, a dashed road winding in to its base between contour lines, fading out
+	// before any edge shows; `map={false}` draws the flame alone. Animation stops under reduced
+	// motion. Copied from the site by `npm run shared`; a test fails if they drift.
 
-	let { size = 40, spark = false }: { size?: number; spark?: boolean } = $props();
+	let {
+		size = 40,
+		spark = false,
+		map = true
+	}: { size?: number; spark?: boolean; map?: boolean } = $props();
+	const uid = $props.id();
 
 	/** The flame's outline in a 64-unit box; every layer is this, scaled about the base centre. */
 	const OUTLINE =
@@ -24,6 +31,37 @@
 		{ scale: 0.42, fill: '#fff4d6', cls: 'l3' }
 	];
 	const layers = $derived(size < 24 ? THREE : FOUR);
+
+	/* The map is drawn in the avatar's 512-unit square, where the flame stands at
+	   translate(133 159) scale(4.6); MAP_TRANSFORM brings it back to the flame's 64-unit box. */
+	const MAP_TRANSFORM = 'scale(0.2174) translate(-133 -159)';
+	/** In from the top left, down the left side and in under the flame, ending inside its base. */
+	const ROAD =
+		'M-30 104 C60 84 150 104 140 172 C130 240 44 236 56 312 C66 380 160 360 176 424 C188 470 250 476 272 412';
+
+	/** Nested uneven rings around a hill top, like contour lines; `h` shapes them. */
+	function hill(cx: number, cy: number, radii: number[], h: number[]): string[] {
+		return radii.map((r, k) => {
+			const points: string[] = [];
+			for (let i = 0; i < 90; i++) {
+				const t = (i / 90) * Math.PI * 2;
+				const w =
+					1 +
+					h[0] * Math.sin(2 * t + h[1] + k * 0.25) +
+					h[2] * Math.sin(3 * t + h[3] - k * 0.18) +
+					0.05 * Math.sin(5 * t + k * 0.6);
+				points.push(
+					`${(cx + r * w * Math.cos(t)).toFixed(1)},${(cy + r * w * 0.82 * Math.sin(t)).toFixed(1)}`
+				);
+			}
+			return points.join(' ');
+		});
+	}
+	const RINGS = [
+		...hill(450, 80, [34, 82, 132], [0.14, 0.4, 0.08, 1.9]),
+		...hill(490, 500, [44, 98], [0.12, 2.2, 0.1, 0.4]),
+		...hill(-6, 330, [40, 92], [0.1, 1.1, 0.12, 2.7])
+	];
 </script>
 
 <svg
@@ -33,6 +71,30 @@
 	class={['logo flame shrink-0 overflow-visible', spark && 'sparking']}
 	aria-hidden="true"
 >
+	{#if map && size >= 32}
+		<defs>
+			<!-- An ellipse left of the flame, wider than tall: gone a third of the mark above and below
+			     (inside the header's row) and before the wordmark on the right. -->
+			<radialGradient
+				id="{uid}-fade"
+				cx="0"
+				cy="0"
+				r="1"
+				gradientUnits="userSpaceOnUse"
+				gradientTransform="translate(206 306) scale(285 221)"
+			>
+				<stop offset="0.45" stop-color="#fff" />
+				<stop offset="1" stop-color="#fff" stop-opacity="0" />
+			</radialGradient>
+			<mask id="{uid}-map" maskUnits="userSpaceOnUse" x="-60" y="-60" width="632" height="632">
+				<rect x="-60" y="-60" width="632" height="632" fill="url(#{uid}-fade)" />
+			</mask>
+		</defs>
+		<g class="map" transform={MAP_TRANSFORM} mask="url(#{uid}-map)">
+			{#each RINGS as points, i (i)}<polygon class="ring" {points} />{/each}
+			<path class="road" d={ROAD} />
+		</g>
+	{/if}
 	<!-- One group per layer: the animation scales the group, so the path keeps its own transform. -->
 	{#each layers as layer (layer.cls)}
 		<g class={layer.cls}>
@@ -48,6 +110,25 @@
 </svg>
 
 <style>
+	/* The road is red by day and gold by night, as on the avatar. */
+	.ring {
+		fill: none;
+		stroke: var(--ink, #2b2433);
+		stroke-opacity: 0.16;
+		stroke-width: 7;
+		stroke-linejoin: round;
+	}
+	.road {
+		fill: none;
+		stroke: var(--seal, #b3402b);
+		stroke-opacity: 0.8;
+		stroke-width: 15;
+		stroke-linecap: round;
+		stroke-dasharray: 22 24;
+	}
+	:global(html[data-theme='dark']) .road {
+		stroke: var(--gold, #e6b457);
+	}
 	/* Breathing, every 4.2 s from the base centre: l1 to 1.04, l2 and l3 to 1.1, l3 slightly later. */
 	.l1,
 	.l2,

@@ -9,6 +9,8 @@ export interface Controller {
 	link(open?: boolean): Promise<void>;
 	reopenLink(): Promise<void>;
 	cancelLink(): void;
+	/** The player is past the greeting a new install shows first. */
+	greet(): Promise<void>;
 	/** Gives up an account's link; the one link's when `id` isn't said. */
 	unlink(id?: string): Promise<void>;
 	/**

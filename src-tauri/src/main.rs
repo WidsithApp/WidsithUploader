@@ -32,7 +32,7 @@ use tauri::{
     async_runtime::Mutex,
     image::Image,
     ipc::Response,
-    menu::{Menu, MenuItem},
+    menu::{IconMenuItem, Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, Url, WindowEvent, Wry,
 };
@@ -51,13 +51,18 @@ const DEFAULT_SERVER: &str = "https://widsith.app";
 /// A recording is a few megabytes, tens at the very most; anything past this isn't one, and
 /// reading it whole into the window would only freeze the app.
 const MAX_RECORDING_BYTES: u64 = 64 << 20;
-/// The tray's picture: the Widsith flame on a midnight disc, the mark the site shows in its header
-/// and the addon by the minimap, drawn with three layers so it still reads at sixteen pixels.
+/// The tray's picture: the Widsith flame alone, as the site draws its mark when it is small,
+/// with three layers so it still reads at sixteen pixels.
 /// Drawn by scripts/build-tray-icon.mjs from the same outline the window's flame uses.
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 /// The same flame drawn in greys, put out, while the player has paused uploading. Drawn by the
 /// same script.
 const TRAY_PAUSED_ICON: &[u8] = include_bytes!("../icons/tray-paused.png");
+/// The tray menu's pictures, beside its words: the flame for Open, and Pause or Resume. Drawn by
+/// the same script, at the 16 pixels Windows draws a menu's picture at.
+const MENU_OPEN_ICON: &[u8] = include_bytes!("../icons/menu-open.png");
+const MENU_PAUSE_ICON: &[u8] = include_bytes!("../icons/menu-pause.png");
+const MENU_RESUME_ICON: &[u8] = include_bytes!("../icons/menu-resume.png");
 /// The tray's name for the app, shown when the pointer rests on its icon.
 const TRAY_TOOLTIP: &str = "Widsith Uploader";
 /// How often the window is told to look for new play.
@@ -728,16 +733,27 @@ fn show(app: &AppHandle) {
     }
 }
 
-/// The tray menu's pause item, kept so its words can follow whether uploading is paused.
-struct PauseItem(MenuItem<Wry>);
+/// The tray menu's pause item, kept so its word and picture can follow whether uploading is
+/// paused.
+struct PauseItem(IconMenuItem<Wry>);
 
 /// The tray's word for what its pause item will do.
 fn pause_label(paused: bool) -> &'static str {
     if paused {
-        "Resume uploading"
+        "Resume"
     } else {
-        "Pause uploading"
+        "Pause"
     }
+}
+
+/// The picture beside it: pause while uploading goes on, play while it is paused.
+fn pause_icon(paused: bool) -> Option<Image<'static>> {
+    let picture = if paused {
+        MENU_RESUME_ICON
+    } else {
+        MENU_PAUSE_ICON
+    };
+    Image::from_bytes(picture).ok()
 }
 
 /// Shows in the tray whether uploading is paused: the menu item's words, the picture (the flame
@@ -751,6 +767,9 @@ async fn set_paused(
 ) -> Result<(), String> {
     item.0
         .set_text(pause_label(paused))
+        .map_err(|error| error.to_string())?;
+    item.0
+        .set_icon(pause_icon(paused))
         .map_err(|error| error.to_string())?;
     if let Some(tray) = app.tray_by_id("main") {
         let picture = if paused { TRAY_PAUSED_ICON } else { TRAY_ICON };
@@ -806,8 +825,22 @@ fn main() {
             update_install
         ])
         .setup(|app| {
-            let open = MenuItem::with_id(app, "open", "Open Widsith Uploader", true, None::<&str>)?;
-            let pause = MenuItem::with_id(app, "pause", pause_label(false), true, None::<&str>)?;
+            let open = IconMenuItem::with_id(
+                app,
+                "open",
+                "Open",
+                true,
+                Image::from_bytes(MENU_OPEN_ICON).ok(),
+                None::<&str>,
+            )?;
+            let pause = IconMenuItem::with_id(
+                app,
+                "pause",
+                pause_label(false),
+                true,
+                pause_icon(false),
+                None::<&str>,
+            )?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &pause, &quit])?;
             app.manage(PauseItem(pause));
@@ -939,8 +972,23 @@ mod tests {
 
     #[test]
     fn the_pause_item_says_what_it_will_do() {
-        assert_eq!(pause_label(false), "Pause uploading");
-        assert_eq!(pause_label(true), "Resume uploading");
+        assert_eq!(pause_label(false), "Pause");
+        assert_eq!(pause_label(true), "Resume");
+    }
+
+    #[test]
+    fn the_menu_pictures_are_pictures_the_size_windows_draws_them() {
+        for (bytes, file) in [
+            (MENU_OPEN_ICON, "menu-open.png"),
+            (MENU_PAUSE_ICON, "menu-pause.png"),
+            (MENU_RESUME_ICON, "menu-resume.png"),
+        ] {
+            let icon =
+                Image::from_bytes(bytes).unwrap_or_else(|_| panic!("icons/{file} should be a PNG"));
+            assert_eq!((icon.width(), icon.height()), (16, 16), "icons/{file}");
+        }
+        assert!(pause_icon(false).is_some() && pause_icon(true).is_some());
+        assert_ne!(MENU_PAUSE_ICON, MENU_RESUME_ICON);
     }
 
     #[test]

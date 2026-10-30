@@ -65,6 +65,34 @@ async function waitFor(condition: () => boolean): Promise<void> {
 
 const sent = (site: FakeSite) => site.requests.filter((r) => r.startsWith('PUT ')).length;
 
+describe('the greeting', () => {
+	it('is shown by a new install, and not again once the player is past it', async () => {
+		const { engine, host } = setup();
+		await engine.start();
+		expect(engine.view.greeting).toBe(true);
+		await engine.greet();
+		expect(engine.view.greeting).toBe(false);
+		const again = new Engine(host);
+		await again.start();
+		expect(again.view.greeting).toBe(false);
+	});
+
+	it('isn’t shown to a player whose app was set up before there was one', async () => {
+		const { host } = await started();
+		const saved = JSON.parse(host.state ?? '{}');
+		delete saved.greeted;
+		host.state = JSON.stringify(saved);
+		const again = new Engine(host);
+		await again.start();
+		expect(again.view.greeting).toBe(false);
+	});
+
+	it('isn’t shown before what was remembered is read', () => {
+		const { engine } = setup();
+		expect(engine.view.greeting).toBe(false);
+	});
+});
+
 describe('before this computer is linked', () => {
 	it('finds the recordings and says whose they are, and asks the site nothing', async () => {
 		const { engine, site } = setup();

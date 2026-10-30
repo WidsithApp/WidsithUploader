@@ -1,7 +1,7 @@
-// Draws the tray icon: the Widsith flame, the site's mark, on a midnight disc. At sixteen pixels
-// the mark's fourth layer turns to mush, so the tray has the three-layer flame the site uses when
-// the mark is small. A second picture shows the same flame drawn in greys, put out, for while the
-// player has paused uploading.
+// Draws the tray icon: the Widsith flame alone, as the site draws its mark when it is small. At
+// sixteen pixels the mark's fourth layer turns to mush, so the tray has the three-layer flame. A
+// second picture shows the same flame drawn in greys, put out, for while the player has paused
+// uploading.
 //
 //   npm run tray-icon
 //
@@ -11,7 +11,7 @@
 // flame.mjs for where `sharp` comes from.
 
 import { fileURLToPath } from 'node:url';
-import { findSharp, flameOnDisc } from './flame.mjs';
+import { findSharp, flameAlone } from './flame.mjs';
 
 const sharp = findSharp();
 
@@ -21,8 +21,9 @@ const SUPER = 8;
 const GREYS = ['#6f6c7a', '#9a97a6', '#c9c6d1'];
 
 const pictures = [
-	{ file: 'tray.png', svg: flameOnDisc('THREE', SIZE * SUPER) },
-	{ file: 'tray-paused.png', svg: flameOnDisc('THREE', SIZE * SUPER, GREYS) }
+	// Tray icons are small and sit close together, so the flame fills its square, tip to base.
+	{ file: 'tray.png', svg: flameAlone('THREE', SIZE * SUPER, { margin: 0.5 }) },
+	{ file: 'tray-paused.png', svg: flameAlone('THREE', SIZE * SUPER, { margin: 0.5, fills: GREYS }) }
 ];
 
 const bigs = [];
@@ -32,6 +33,32 @@ for (const { file, svg } of pictures) {
 	await sharp(big).resize(SIZE, SIZE, { kernel: 'lanczos3' }).png().toFile(out);
 	console.log(`wrote src-tauri/icons/${file}`);
 	bigs.push(big);
+}
+
+// The tray menu's pictures, beside its words: the flame for Open, and Pause or Resume as the
+// window's own icons draw them (Phosphor, MIT, fill weight), in the flame's amber, which holds on
+// a light menu and a dark one. Windows draws a menu's picture in a 16-pixel square whatever the
+// screen's scaling, so they are made at exactly that.
+const MENU = 16;
+const AMBER = '#d97a26';
+const GLYPHS = {
+	pause:
+		'M216 48v160a16 16 0 0 1-16 16h-40a16 16 0 0 1-16-16V48a16 16 0 0 1 16-16h40a16 16 0 0 1 16 16M96 32H56a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h40a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16',
+	resume:
+		'M240 128a15.74 15.74 0 0 1-7.6 13.51L88.32 229.65a16 16 0 0 1-16.2.3A15.86 15.86 0 0 1 64 216.13V39.87a15.86 15.86 0 0 1 8.12-13.82a16 16 0 0 1 16.2.3l144.08 88.14A15.74 15.74 0 0 1 240 128'
+};
+const glyph = (d) =>
+	`<svg xmlns="http://www.w3.org/2000/svg" width="${MENU * SUPER}" height="${MENU * SUPER}" viewBox="16 16 224 224"><path fill="${AMBER}" d="${d}"/></svg>`;
+const menu = [
+	{ file: 'menu-open.png', svg: flameAlone('THREE', MENU * SUPER, { margin: 0.5 }) },
+	{ file: 'menu-pause.png', svg: glyph(GLYPHS.pause) },
+	{ file: 'menu-resume.png', svg: glyph(GLYPHS.resume) }
+];
+for (const { file, svg } of menu) {
+	const out = fileURLToPath(new URL(`../src-tauri/icons/${file}`, import.meta.url));
+	const big = await sharp(Buffer.from(svg)).png().toBuffer();
+	await sharp(big).resize(MENU, MENU, { kernel: 'lanczos3' }).png().toFile(out);
+	console.log(`wrote src-tauri/icons/${file}`);
 }
 
 if (process.argv[2]) {

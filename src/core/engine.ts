@@ -246,6 +246,12 @@ interface Persisted {
 	 * a pause, which reads as not paused.
 	 */
 	paused: boolean;
+	/**
+	 * The player has been past the greeting, the first thing a new install shows. Missing from a
+	 * file written before there was a greeting, which reads as greeted: that player is past the
+	 * first run already.
+	 */
+	greeted: boolean;
 }
 
 const EMPTY: Persisted = {
@@ -262,7 +268,8 @@ const EMPTY: Persisted = {
 	accountsSeen: {},
 	told: [],
 	lookedAt: null,
-	paused: false
+	paused: false,
+	greeted: false
 };
 
 /** What the card says of sessions the site won't take for their size; null when there are none. */
@@ -410,6 +417,11 @@ export interface AddonView {
 }
 
 export interface View {
+	/**
+	 * A new install that hasn't been past the greeting: what the app does, whether it starts with
+	 * Windows, and where it is once its window is closed. Shown before anything else.
+	 */
+	greeting: boolean;
 	/** False until the first look has finished. */
 	ready: boolean;
 	/** At least one account is linked. */
@@ -477,6 +489,8 @@ interface Linked {
 
 export class Engine {
 	view: View = {
+		// Not until what was remembered is read: a player past it never sees it flash up.
+		greeting: false,
 		ready: false,
 		linked: false,
 		battletag: null,
@@ -602,6 +616,7 @@ export class Engine {
 					),
 					pendingLink: saved.pendingLink ? linkOf(saved.pendingLink) : null,
 					earlierOn: saved.earlierOn ?? [],
+					greeted: saved.greeted ?? true,
 					version: 5
 				};
 			} else if (saved?.version === 2 || saved?.version === 1) {
@@ -628,7 +643,8 @@ export class Engine {
 					firstSeen,
 					told: saved.told ?? [],
 					lookedAt: saved.version === 1 ? now : (saved.lookedAt ?? null),
-					paused: saved.paused ?? false
+					paused: saved.paused ?? false,
+					greeted: true
 				};
 			}
 		} catch {
@@ -656,6 +672,14 @@ export class Engine {
 		// What was remembered shows at once (a pause, above all), before the first look finishes.
 		this.#publish();
 		await this.tick();
+	}
+
+	/** The player is past the greeting; it isn't shown again. */
+	async greet(): Promise<void> {
+		if (this.#state.greeted) return;
+		this.#state.greeted = true;
+		await this.#save();
+		this.#publish();
 	}
 
 	/**
@@ -1680,6 +1704,7 @@ export class Engine {
 		const onlyLink = only ? this.#state.links[only.id] : undefined;
 		const linked = this.#links.size > 0 || this.#legacyToken !== null;
 		this.view = {
+			greeting: !this.#state.greeted,
 			ready: this.#ready,
 			linked,
 			battletag: onlyLink?.battletag ?? (this.#links.size === 0 ? (this.#state.pendingLink?.battletag ?? null) : null),

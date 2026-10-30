@@ -1,7 +1,6 @@
 <script lang="ts">
 	// The start screen, shown once after linking: the account's characters with their switches (all
-	// on) and a Start uploading button. Nothing new is sent until it's pressed; pressing it also
-	// turns on start-with-Windows.
+	// on) and a Start uploading button. Nothing new is sent until it's pressed.
 
 	import { SITE_NAME } from '../core/config.ts';
 	import type { CharacterView } from '../core/engine.ts';
@@ -72,8 +71,7 @@
 	<p class="lead">
 		Each character below is kept Private on {SITE_NAME}, and so is every character you play from now
 		on. You can make any of them Public from its page on {SITE_NAME}. Switch off any you’d rather keep
-		on this PC only. Starting also sets the app to start when you sign in to Windows, which you can
-		change in its settings.
+		on this PC only.
 	</p>
 
 	<ul class="rows sheet">
