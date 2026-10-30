@@ -63,7 +63,8 @@
 		align-items: center;
 		gap: 14px;
 		height: 56px;
-		padding: 0 18px 0 14px;
+		/* Room on the left for the map the flame stands on to fade out before the window's edge. */
+		padding: 0 18px 0 24px;
 		border-bottom: 1px solid var(--rule-2);
 		background: var(--paper);
 	}

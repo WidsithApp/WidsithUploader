@@ -51,8 +51,8 @@ const DEFAULT_SERVER: &str = "https://widsith.app";
 /// A recording is a few megabytes, tens at the very most; anything past this isn't one, and
 /// reading it whole into the window would only freeze the app.
 const MAX_RECORDING_BYTES: u64 = 64 << 20;
-/// The tray's picture: the Widsith flame on a midnight disc, the mark the site shows in its header
-/// and the addon by the minimap, drawn with three layers so it still reads at sixteen pixels.
+/// The tray's picture: the Widsith flame alone, as the site draws its mark when it is small,
+/// with three layers so it still reads at sixteen pixels.
 /// Drawn by scripts/build-tray-icon.mjs from the same outline the window's flame uses.
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 /// The same flame drawn in greys, put out, while the player has paused uploading. Drawn by the

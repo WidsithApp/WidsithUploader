@@ -1,7 +1,7 @@
-// Draws the tray icon: the Widsith flame, the site's mark, on a midnight disc. At sixteen pixels
-// the mark's fourth layer turns to mush, so the tray has the three-layer flame the site uses when
-// the mark is small. A second picture shows the same flame drawn in greys, put out, for while the
-// player has paused uploading.
+// Draws the tray icon: the Widsith flame alone, as the site draws its mark when it is small. At
+// sixteen pixels the mark's fourth layer turns to mush, so the tray has the three-layer flame. A
+// second picture shows the same flame drawn in greys, put out, for while the player has paused
+// uploading.
 //
 //   npm run tray-icon
 //
@@ -11,7 +11,7 @@
 // flame.mjs for where `sharp` comes from.
 
 import { fileURLToPath } from 'node:url';
-import { findSharp, flameOnDisc } from './flame.mjs';
+import { findSharp, flameAlone } from './flame.mjs';
 
 const sharp = findSharp();
 
@@ -21,8 +21,9 @@ const SUPER = 8;
 const GREYS = ['#6f6c7a', '#9a97a6', '#c9c6d1'];
 
 const pictures = [
-	{ file: 'tray.png', svg: flameOnDisc('THREE', SIZE * SUPER) },
-	{ file: 'tray-paused.png', svg: flameOnDisc('THREE', SIZE * SUPER, GREYS) }
+	// Tray icons are small and sit close together, so the flame fills its square, tip to base.
+	{ file: 'tray.png', svg: flameAlone('THREE', SIZE * SUPER, { margin: 0.5 }) },
+	{ file: 'tray-paused.png', svg: flameAlone('THREE', SIZE * SUPER, { margin: 0.5, fills: GREYS }) }
 ];
 
 const bigs = [];
