@@ -2,10 +2,12 @@
 
 Each version of Widsith Uploader, newest first, with the date it was handed out. An installed copy updates itself to the newest version within a few hours of its release.
 
-## 0.4.6 · 2026-10-29
+## 0.4.7 · 2026-10-30
 
+- A new install greets you first. It asks whether the app should start when you sign in to Windows, says that closing the window leaves it in the tray, and opens the taskbar settings where you can keep its icon in view.
+- The site's new logo in the window, and the flame alone in the tray and as the app's icon.
 - Ready for WoW Forever's launch: recordings from the released client's folder, `_forever_`, are found and sent as the beta's were, and shown under WoW Forever.
-- The libraries that check the site's certificate brought up to date.
+- The libraries that check the site's certificate, and the one the app reads and writes files with, brought up to date.
 - A session too large for the site to take no longer holds up the rest of the character's play. It stays on this PC, the card says so, and it is tried again only if it grows.
 
 ## 0.4.5 · 2026-10-23

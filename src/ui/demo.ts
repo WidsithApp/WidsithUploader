@@ -1,6 +1,6 @@
 // A fake controller with made-up characters, so the window can be worked on in a plain browser
-// (`npm run dev:web`) without the app, the game or the site. Pick a state with `?demo=` (new,
-// linking, setup, linked, paused, empty, update; `&state=downloading|failed` for update).
+// (`npm run dev:web`) without the app, the game or the site. Pick a state with `?demo=` (greeting,
+// new, linking, setup, linked, paused, empty, update; `&state=downloading|failed` for update).
 //
 // Pemba (Retail) and Brannoc (Forever) are both unverified; only Pemba should show the notice.
 
@@ -317,6 +317,7 @@ const BASE: View = {
 		],
 		latest: '0.4.1'
 	},
+	greeting: false,
 	setup: null,
 	lookedAt: now - 3 * HOUR,
 	lastSentAt: now - 40 * 60000,
@@ -437,6 +438,9 @@ const VIEWS: Record<string, View> = {
 	}
 };
 
+// A new install: the greeting, and behind it the window as it is before linking.
+VIEWS.greeting = { ...VIEWS.new, greeting: true };
+
 export function demo(): { controller: Controller; shell: Shell } {
 	const name = new URLSearchParams(location.search).get('demo') ?? 'linked';
 	let view = VIEWS[name] ?? BASE;
@@ -461,6 +465,9 @@ export function demo(): { controller: Controller; shell: Shell } {
 			link: nothing,
 			reopenLink: nothing,
 			cancelLink: () => {},
+			async greet() {
+				change({ ...view, greeting: false });
+			},
 			unlink: nothing,
 			async setUploading(key, on) {
 				const was = view.characters.find((c) => c.key === key);
