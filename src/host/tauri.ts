@@ -14,6 +14,7 @@ import {
 	sendNotification
 } from '@tauri-apps/plugin-notification';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { PATIENCE } from '../core/config.ts';
 import type { AddonFound, FoundFile, Host, Updates } from '../core/engine.ts';
 
 async function gzip(text: string): Promise<Uint8Array<ArrayBuffer>> {
@@ -56,7 +57,13 @@ export async function tauriHost(): Promise<Host> {
 	const server = await invoke<string>('server_url');
 	return {
 		server,
-		fetch: (url, init) => siteFetch(url, init),
+		// The plugin's own client never gives up on a request, so each is given a deadline here, as
+		// long as the request said it would wait. When it passes, the plugin cancels the request on
+		// the Rust side as well, and the call rejects like any request that failed.
+		fetch: (url, init = {}) => {
+			const { patienceMs = PATIENCE.quick, ...request } = init;
+			return siteFetch(url, { ...request, signal: AbortSignal.timeout(patienceMs) });
+		},
 		tools: { gzip, sha256 },
 		findInstalls: () => invoke<string[]>('find_installs'),
 		scan: (root) => invoke<FoundFile[]>('scan_recordings', { root }),

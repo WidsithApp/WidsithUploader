@@ -13,6 +13,10 @@ concurrency:
   group: app-${{ github.ref }}
   cancel-in-progress: true
 
+# The token can only read, unless a job says otherwise.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -40,7 +44,8 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@v7
-      - uses: rustsec/audit-check@v2
+      # Pinned to the commit the tag stood at, so a moved tag can't change what runs here.
+      - uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: src-tauri

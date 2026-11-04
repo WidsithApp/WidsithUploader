@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIMING } from '../src/core/config.ts';
+import { PATIENCE, TIMING } from '../src/core/config.ts';
 import { Engine, isEarlierFile } from '../src/core/engine.ts';
 import {
 	AVERIL,
@@ -321,7 +321,7 @@ describe('a character turned away by the site', () => {
 		expect(engine.view.characters[0].message).toMatch(/Another account already keeps/);
 		expect(site.kept.size).toBe(0);
 		expect(host.notices).toEqual([
-			'Sevra: Another account already keeps this character.'
+			'Sevra: Another account already keeps this character. If it’s yours, tell us from the support page at widsith.app/support.'
 		]);
 
 		await engine.tick();
@@ -838,6 +838,44 @@ describe('a kept character', () => {
 	});
 });
 
+describe('waiting on the site', () => {
+	it('gives a session and the site’s reading of it long enough, and every other request less', async () => {
+		const { site } = await started();
+		const asked = site.requests.map((request, i) => ({ request, patience: site.patience[i] }));
+		const slow = (request: string) =>
+			request.startsWith('PUT ') || request === 'POST /api/uploads/done';
+		expect(asked.filter((a) => slow(a.request))).toEqual([
+			{ request: 'PUT /api/uploads/session', patience: PATIENCE.send },
+			{ request: 'POST /api/uploads/done', patience: PATIENCE.send }
+		]);
+		const others = asked.filter((a) => !slow(a.request));
+		expect(others.length).toBeGreaterThan(0);
+		for (const other of others) expect(other).toMatchObject({ patience: PATIENCE.quick });
+	});
+
+	it('keeps one look waiting however many ticks come while a send holds things up', async () => {
+		const { engine, site, host } = await started();
+		let looks = 0;
+		const scan = host.scan;
+		host.scan = async (root) => {
+			looks++;
+			return scan(root);
+		};
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 2]]));
+		host.wait(MINUTE);
+		site.holdSends = true;
+		const sending = engine.tick();
+		await waitFor(() => site.release !== null);
+		// The look that is sending has started, so these queue one more look between them.
+		const waiting = [engine.tick(), engine.tick()];
+		site.holdSends = false;
+		site.release?.();
+		await Promise.all([sending, ...waiting]);
+		expect(looks).toBe(2);
+		expect(sent(site)).toBe(2);
+	});
+});
+
 describe('unlinking', () => {
 	it('from the app gives up the token, and sends nothing afterwards', async () => {
 		const { engine, site, host } = await started();
@@ -880,6 +918,33 @@ describe('the addon', () => {
 		host.addonsFound = [];
 		await engine.sendNow();
 		expect(engine.view.addon.state).toBe('missing');
+	});
+
+	it('is unknown, and the window goes on, when the site answers no version', async () => {
+		const made = setup();
+		made.site.addonVersion = 7;
+		const { engine } = await linked(made);
+		expect(engine.view.addon).toMatchObject({ state: 'unknown', latest: null });
+		// Every later look still publishes a view.
+		let views = 0;
+		engine.subscribe(() => views++);
+		await engine.sendNow();
+		expect(views).toBeGreaterThan(1);
+	});
+});
+
+describe('a link whose times the site answered badly', () => {
+	it('asks at the usual pace and runs out at the usual time', async () => {
+		const { engine, host, site } = setup();
+		host.onOpen = () => {};
+		site.linkTimes = { expiresIn: 'x', interval: 'x' };
+		await engine.start();
+		await engine.link();
+		// Nobody approves it: the poll runs on the fake clock until the link runs out.
+		await waitFor(() => engine.view.linking === null);
+		const asks = site.requests.filter((r) => r === 'POST /api/device/token').length;
+		expect(asks).toBe(600 / 3);
+		expect(engine.view.notice).toMatch(/ran out/);
 	});
 });
 

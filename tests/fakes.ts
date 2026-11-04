@@ -105,7 +105,10 @@ export class FakeSite {
 	kept = new Map<string, KeptOnSite>();
 	/** Characters their player removed on the site: when, and the sessions deleted with them. */
 	removed = new Map<string, { at: number; sessions: Set<number> }>();
-	addonVersion = '0.2.24';
+	/** What the site says the newest addon is; anything but a string is a broken answer. */
+	addonVersion: unknown = '0.2.24';
+	/** The link's times as the site answers them; anything but a number is a broken answer. */
+	linkTimes: { expiresIn: unknown; interval: unknown } = { expiresIn: 600, interval: 3 };
 	/** The site can't be reached. */
 	down = false;
 	/** Sessions are answered with the site's error page: a 500 that isn't JSON. */
@@ -123,6 +126,11 @@ export class FakeSite {
 	/** Who approves the next link: the player unless a test says another account does. */
 	approver: { battletag: string; battlenetId: string } = OWNER;
 	requests: string[] = [];
+	/** How long each request said it would wait, in the same order as `requests`. */
+	patience: (number | undefined)[] = [];
+	/** While set, a session sent is held part-way until the test calls `release`. */
+	holdSends = false;
+	release: (() => void) | null = null;
 	/** Sessions sent under a character that didn't play them, by their time, which it set aside. */
 	setAside: number[] = [];
 	/** Every plan the uploader asked for, as it was sent. */
@@ -164,7 +172,12 @@ export class FakeSite {
 		const { pathname, searchParams } = new URL(url);
 		const method = init.method ?? 'GET';
 		this.requests.push(`${method} ${pathname}`);
+		this.patience.push(init.patienceMs);
 		if (this.down) throw new Error('offline');
+		if (method === 'PUT' && this.holdSends) {
+			await new Promise<void>((resolve) => (this.release = resolve));
+			this.release = null;
+		}
 		const answer = (status: number, body: unknown) => ({
 			status,
 			ok: status >= 200 && status < 300,
@@ -188,8 +201,8 @@ export class FakeSite {
 				deviceCode,
 				userCode,
 				verifyUrl: `${this.origin}/link?code=${userCode}`,
-				expiresIn: 600,
-				interval: 3
+				expiresIn: this.linkTimes.expiresIn,
+				interval: this.linkTimes.interval
 			});
 		}
 		if (method === 'POST' && pathname === '/api/device/token') {
@@ -236,8 +249,7 @@ export class FakeSite {
 					modeLabel: 'Retail',
 					...this.cards.get(guid)
 				})),
-				listed: [],
-				addon: { version: this.addonVersion, file: '/downloads/addon.zip', sha256: 'x' },
+				addon: { version: this.addonVersion },
 				art: { classIcons: this.classIcons }
 			});
 		}

@@ -43,7 +43,7 @@ These aren't promises resting on good behaviour alone. The window can't open fil
 ## How it works
 
 1. **Greet.** The first time it runs, the app says what it does and asks whether to start when you sign in to Windows, ticked to begin with, so new play is sent without anyone having to open it; Settings can change it later. It also says that closing the window leaves the app in the tray, and offers Windows' taskbar settings, where its icon can be kept in view beside the clock.
-2. **Link.** The app asks the site for a pair of codes and opens the site's `/link` page with the short one, or gives you the link to open in whichever browser you like. You sign in there with Battle.net and approve it. The app then receives a token of its own, kept in Windows Credential Manager. It never sees your Battle.net sign-in. You can unlink the computer from the app, or from your library on the site.
+2. **Link.** The app asks the site for a pair of codes and opens the site's `/link` page with the short one, or gives you the link to open in whichever browser you like. You sign in there with Battle.net and approve it. The app then receives a token of its own, kept in Windows Credential Manager. It never sees your Battle.net sign-in. You can unlink the computer from the app, or under Linked computers in Settings on the site.
 3. **Start.** After linking, the app lists the account's characters on this computer, each with an Uploading switch, all on, and one button: Start uploading. Every character left on is kept Private on the site, and so is every character played here later, without asking. You can make any of them Public on the site. A switch turned off here, then or at any time on the character's card, keeps that character on this computer only. Each character's card then says where it stands, with the mark the site uses for it, and its View on Widsith button opens its page.
 4. **Send.** Every fifteen seconds the app checks whether a recording has changed. If it has, it splits the file into sessions, tells the site each session's time and SHA-256, and sends only the ones the site lacks, gzipped. Nothing pops up to say so. A session the site won't take for its size stays on this PC and the character's card says so; everything else is sent as usual.
 
@@ -80,7 +80,7 @@ set WIDSITH_SERVER=http://localhost:5188
 npm run dev
 ```
 
-To read the real app's window from a script, start it with the WebView's debugging port open and connect with any DevTools client. With `--hidden` it starts in the tray without showing its window.
+To read the real app's window from a script, start a development build with the WebView's debugging port open and connect with any DevTools client. A build that is handed out ignores the variable, so nothing on a player's computer can open its window that way. With `--hidden` it starts in the tray without showing its window.
 
 ```
 set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9555
@@ -112,6 +112,8 @@ A release is built with `npm run release`, or `npm run ship -- <version>`, which
 All rights reserved, Reflective Grove LLC; the source is open for anyone to read, and the terms are in `LICENSE.txt`. The installer shows it on a first install and puts a copy beside the app.
 
 The official app is the signed installer from widsith.app, and installed copies update themselves only from there. A copy from anywhere else, one someone else built from this source, or a changed one, isn't ours: we can't support it and aren't responsible for what it does. Using the app is also covered by the site's Terms of Service and Privacy page, which the window says before linking and under About.
+
+Widsith is a fan project. It is not made, endorsed or supported by Blizzard Entertainment. World of Warcraft and Warcraft are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
 
 The app is built from open-source works: the Rust crates compiled into it, the npm packages in its window's code, its two fonts, and the Phosphor icons it draws. Their licences are collected in `THIRD-PARTY-NOTICES.txt`, which `npm run notices` writes from the Rust and npm dependencies as installed, and the installer puts it beside the app too.
 

@@ -45,3 +45,16 @@ export const TIMING = {
 	 */
 	updateIdle: 10 * MINUTE
 };
+
+/**
+ * How long each request to the site is waited for before it is given up, so that a connection
+ * which stalls after the computer sleeps or changes network fails like any other and is tried
+ * again, instead of holding up everything behind it. `quick` is for every request the site
+ * answers from what it has. `send` is for a session, and for the site's reading of what was sent
+ * (`done`, which rebuilds the character before it answers), and equals the longest the site lets a
+ * request run, so the app never gives up on either before the site would.
+ */
+export const PATIENCE = {
+	quick: 30 * SECOND,
+	send: 5 * MINUTE
+};
