@@ -220,7 +220,7 @@
 						>
 					</p>
 					<p class="small">
-						Nothing is sent until you have linked it and said how new characters are kept.
+						Nothing is sent until you have linked it and started uploading.
 					</p>
 					<p class="small">
 						By linking it you agree to the
