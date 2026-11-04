@@ -2,6 +2,14 @@
 
 Each version of Widsith Uploader, newest first, with the date it was handed out. An installed copy updates itself to the newest version within a few hours of its release.
 
+## 0.4.9 · 2026-11-05
+
+- A request to the site that never answers, as can happen after the PC sleeps or changes network, no longer stops the app for good. Each request now gives up after a set time and is tried again later, and the app says so on the character's card as it does for any other failure.
+- While a large recording is being sent, the app no longer queues up repeated looks at the game's folders behind it.
+- The app refuses to follow a redirect to any site but widsith.app.
+- A character another account already keeps on the site now says what to do if it is yours.
+- The About text says the app reads only the names of the addon's screenshots, never the pictures.
+
 ## 0.4.8 · 2026-11-04
 
 - With "Screenshot highlights" on in the addon, each character's card says how many of the pictures it took are on this PC, and "Open the folder" opens the game's Screenshots folder. The app reads only the files' names, and no picture is sent.
