@@ -123,6 +123,11 @@ export class FakeSite {
 	/** Who approves the next link: the player unless a test says another account does. */
 	approver: { battletag: string; battlenetId: string } = OWNER;
 	requests: string[] = [];
+	/** How long each request said it would wait, in the same order as `requests`. */
+	patience: (number | undefined)[] = [];
+	/** While set, a session sent is held part-way until the test calls `release`. */
+	holdSends = false;
+	release: (() => void) | null = null;
 	/** Sessions sent under a character that didn't play them, by their time, which it set aside. */
 	setAside: number[] = [];
 	/** Every plan the uploader asked for, as it was sent. */
@@ -164,7 +169,12 @@ export class FakeSite {
 		const { pathname, searchParams } = new URL(url);
 		const method = init.method ?? 'GET';
 		this.requests.push(`${method} ${pathname}`);
+		this.patience.push(init.patienceMs);
 		if (this.down) throw new Error('offline');
+		if (method === 'PUT' && this.holdSends) {
+			await new Promise<void>((resolve) => (this.release = resolve));
+			this.release = null;
+		}
 		const answer = (status: number, body: unknown) => ({
 			status,
 			ok: status >= 200 && status < 300,

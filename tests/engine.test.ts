@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIMING } from '../src/core/config.ts';
+import { PATIENCE, TIMING } from '../src/core/config.ts';
 import { Engine, isEarlierFile } from '../src/core/engine.ts';
 import {
 	AVERIL,
@@ -835,6 +835,44 @@ describe('a kept character', () => {
 		expect(engine.view.characters[0]).toMatchObject({ upToDate: true });
 		// Nothing was sent twice.
 		expect(sent(site)).toBe(1);
+	});
+});
+
+describe('waiting on the site', () => {
+	it('gives a session and the site’s reading of it long enough, and every other request less', async () => {
+		const { site } = await started();
+		const asked = site.requests.map((request, i) => ({ request, patience: site.patience[i] }));
+		const slow = (request: string) =>
+			request.startsWith('PUT ') || request === 'POST /api/uploads/done';
+		expect(asked.filter((a) => slow(a.request))).toEqual([
+			{ request: 'PUT /api/uploads/session', patience: PATIENCE.send },
+			{ request: 'POST /api/uploads/done', patience: PATIENCE.send }
+		]);
+		const others = asked.filter((a) => !slow(a.request));
+		expect(others.length).toBeGreaterThan(0);
+		for (const other of others) expect(other).toMatchObject({ patience: PATIENCE.quick });
+	});
+
+	it('keeps one look waiting however many ticks come while a send holds things up', async () => {
+		const { engine, site, host } = await started();
+		let looks = 0;
+		const scan = host.scan;
+		host.scan = async (root) => {
+			looks++;
+			return scan(root);
+		};
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 2]]));
+		host.wait(MINUTE);
+		site.holdSends = true;
+		const sending = engine.tick();
+		await waitFor(() => site.release !== null);
+		// The look that is sending has started, so these queue one more look between them.
+		const waiting = [engine.tick(), engine.tick()];
+		site.holdSends = false;
+		site.release?.();
+		await Promise.all([sending, ...waiting]);
+		expect(looks).toBe(2);
+		expect(sent(site)).toBe(2);
 	});
 });
 

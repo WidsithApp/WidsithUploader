@@ -71,6 +71,11 @@ const TRAY_TOOLTIP: &str = "Widsith Uploader";
 const TICK: Duration = Duration::from_secs(15);
 /// Where the site publishes the newest version of the app, under whichever site it talks to.
 const UPDATE_FEED: &str = "/downloads/uploader-update.json";
+/// How long a look at the feed, or the installer's download, is waited for before it is given up
+/// and tried again at the next check. Without it a connection that stalls after sleep or a change
+/// of network would never end, and no update would come for as long as the app runs. Ten minutes
+/// is enough for the installer on a slow link.
+const UPDATE_PATIENCE: Duration = Duration::from_secs(600);
 /// The note the app leaves itself before an update, read once when it starts again.
 const AFTER_UPDATE_FILE: &str = "after-update.json";
 /// A note older than this is not from the update that just finished, and is ignored.
@@ -681,6 +686,7 @@ async fn update_check(
     let feed = Url::parse(&format!("{}{UPDATE_FEED}", server_url())).map_err(|e| e.to_string())?;
     let found = app
         .updater_builder()
+        .timeout(UPDATE_PATIENCE)
         .endpoints(vec![feed])
         .and_then(|builder| builder.build())
         .map_err(|e| e.to_string())?
@@ -688,10 +694,13 @@ async fn update_check(
         .await
         .map_err(|e| e.to_string())?;
     let mut slot = pending.0.lock().await;
-    let Some(update) = found else {
+    let Some(mut update) = found else {
         *slot = None;
         return Ok(None);
     };
+    // The update the check finds doesn't carry the check's timeout over to its download, so it is
+    // given the same one here.
+    update.timeout = Some(UPDATE_PATIENCE);
     let answer = UpdateFound {
         version: update.version.clone(),
         notes: update.body.clone(),
