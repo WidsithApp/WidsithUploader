@@ -2,8 +2,10 @@
 //   linking:   POST /api/device/link, POST /api/device/token
 //   who am I:  GET /api/device/me, DELETE /api/device/me
 //   sending:   POST /api/uploads/plan, PUT /api/uploads/session, POST /api/uploads/done
-// Nothing else is ever sent, and nothing goes anywhere but the one server named here.
+// Nothing else is ever sent, and nothing goes anywhere but the one server named here. Each says
+// how long it will wait for an answer (PATIENCE), so a stalled connection can't hold the app up.
 
+import { PATIENCE } from './config.ts';
 import type { Game } from './sessions.ts';
 
 export type Sharing = 'private' | 'public';
@@ -15,6 +17,11 @@ export type Fetch = (
 		method?: string;
 		headers?: Record<string, string>;
 		body?: string | Uint8Array<ArrayBuffer>;
+		/**
+		 * How long the caller is prepared to wait for the whole request, in ms, after which the host
+		 * gives up on it and the call rejects.
+		 */
+		patienceMs?: number;
 	}
 ) => Promise<{ status: number; ok: boolean; json(): Promise<unknown> }>;
 
@@ -182,7 +189,8 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/device/link`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ name })
+			body: JSON.stringify({ name }),
+			patienceMs: PATIENCE.quick
 		});
 		const body = (await bodyOf(response)) as Partial<LinkStarted>;
 		if (!response.ok || !body.deviceCode || !body.userCode || !body.verifyUrl) {
@@ -201,7 +209,8 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/device/token`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ deviceCode })
+			body: JSON.stringify({ deviceCode }),
+			patienceMs: PATIENCE.quick
 		});
 		const body = await bodyOf(response);
 		if (body.status === 'linked' && typeof body.token === 'string') {
@@ -219,7 +228,8 @@ export class Api {
 
 	async me(): Promise<Me> {
 		const response = await this.#fetch(`${this.server}/api/device/me`, {
-			headers: this.#headers({ accept: 'application/json' })
+			headers: this.#headers({ accept: 'application/json' }),
+			patienceMs: PATIENCE.quick
 		});
 		if (response.status === 401) throw new Unlinked();
 		const body = (await bodyOf(response)) as Partial<Record<keyof Me, unknown>> & { ok?: boolean };
@@ -240,7 +250,8 @@ export class Api {
 	async unlink(): Promise<void> {
 		await this.#fetch(`${this.server}/api/device/me`, {
 			method: 'DELETE',
-			headers: this.#headers()
+			headers: this.#headers(),
+			patienceMs: PATIENCE.quick
 		});
 	}
 
@@ -248,7 +259,8 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/uploads/plan`, {
 			method: 'POST',
 			headers: this.#headers({ 'content-type': 'application/json' }),
-			body: JSON.stringify(plan)
+			body: JSON.stringify(plan),
+			patienceMs: PATIENCE.quick
 		});
 		if (response.status === 401) throw new Unlinked();
 		const body = await bodyOf(response);
@@ -278,7 +290,8 @@ export class Api {
 			{
 				method: 'PUT',
 				headers: this.#headers({ 'content-type': 'application/gzip' }),
-				body: gz
+				body: gz,
+				patienceMs: PATIENCE.send
 			}
 		);
 		if (response.status === 401) throw new Unlinked();
@@ -303,7 +316,9 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/uploads/done`, {
 			method: 'POST',
 			headers: this.#headers({ 'content-type': 'application/json' }),
-			body: JSON.stringify({ guid })
+			body: JSON.stringify({ guid }),
+			// The site rebuilds the character before it answers, which can take a while for a long one.
+			patienceMs: PATIENCE.send
 		});
 		if (response.status === 401) throw new Unlinked();
 		return response.ok;
