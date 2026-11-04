@@ -570,6 +570,8 @@ export class Engine {
 	#browser: string | null = null;
 	#ready = false;
 	#queue: Promise<void> = Promise.resolve();
+	/** A look in the queue that hasn't started yet, which the next tick joins. */
+	#lookWaiting: Promise<void> | null = null;
 	#listeners = new Set<(view: View) => void>();
 	#update: UpdateView | null = null;
 	/** When the update was downloaded and ready to go in. */
@@ -736,12 +738,23 @@ export class Engine {
 	/**
 	 * One look round: called every few seconds, and whenever something may have changed. Each also
 	 * sees to the app's own updates, which go on beside the looks rather than holding them up.
+	 * While a send or a player's choice holds the queue, ticks keep coming: each joins the look
+	 * already waiting its turn rather than adding another, so the queue never piles up with looks.
 	 */
 	async tick(): Promise<void> {
-		await Promise.all([this.#enqueue(() => this.#look()), this.#updateTurn()]);
+		this.#lookWaiting ??= this.#enqueue(async () => {
+			// Cleared as the look starts: what it finds may change while it runs, so a tick that
+			// comes meanwhile queues one more.
+			this.#lookWaiting = null;
+			await this.#look();
+		});
+		await Promise.all([this.#lookWaiting, this.#updateTurn()]);
 	}
 
-	/** Look again at once, forgetting any waiting after a failure. */
+	/**
+	 * Look again at once, forgetting any waiting after a failure. The waits are forgotten now, so a
+	 * look already waiting in the queue, which this joins, goes ahead without them.
+	 */
 	sendNow(): Promise<void> {
 		for (const runtime of this.#runtime.values()) runtime.retryAt = undefined;
 		for (const linked of this.#links.values()) linked.meDirty = true;

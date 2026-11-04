@@ -111,7 +111,8 @@ const CHARACTERS: CharacterView[] = [
 		status: 'refused',
 		upToDate: false,
 		savedAt: now - 4 * DAY,
-		message: 'Another account already keeps this character.'
+		message:
+			'Another account already keeps this character. If it’s yours, tell us from the support page at widsith.app/support.'
 	}),
 	character({
 		...FOREVER,

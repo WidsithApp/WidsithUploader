@@ -2,8 +2,10 @@
 //   linking:   POST /api/device/link, POST /api/device/token
 //   who am I:  GET /api/device/me, DELETE /api/device/me
 //   sending:   POST /api/uploads/plan, PUT /api/uploads/session, POST /api/uploads/done
-// Nothing else is ever sent, and nothing goes anywhere but the one server named here.
+// Nothing else is ever sent, and nothing goes anywhere but the one server named here. Each says
+// how long it will wait for an answer (PATIENCE), so a stalled connection can't hold the app up.
 
+import { PATIENCE } from './config.ts';
 import type { Game } from './sessions.ts';
 
 export type Sharing = 'private' | 'public';
@@ -15,6 +17,11 @@ export type Fetch = (
 		method?: string;
 		headers?: Record<string, string>;
 		body?: string | Uint8Array<ArrayBuffer>;
+		/**
+		 * How long the caller is prepared to wait for the whole request, in ms, after which the host
+		 * gives up on it and the call rejects.
+		 */
+		patienceMs?: number;
 	}
 ) => Promise<{ status: number; ok: boolean; json(): Promise<unknown> }>;
 
@@ -90,10 +97,8 @@ export interface Me {
 	/** The account's Battle.net ID, which names its folder under the game's WTF/Account. */
 	battlenetId: string | null;
 	kept: Kept[];
-	/** The characters Battle.net lists on the account. */
-	listed: { region: string; characterId: number; name: string; realm: string }[];
-	/** The newest addon the site hands out. */
-	addon: { version: string; file: string; sha256: string };
+	/** The newest addon's version, or null when the site didn't say. */
+	addon: { version: string | null };
 	/** Where the game's class icons are: `<classIcons>/<classID>.png` is one class's. */
 	art: { classIcons: string | null };
 }
@@ -101,6 +106,11 @@ export interface Me {
 const numberOr = (value: unknown): number | null =>
 	typeof value === 'number' && Number.isFinite(value) ? value : null;
 const textOr = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+/** A number the site sent, held within what makes sense for it, or null when it sent none. */
+const withinOr = (value: unknown, least: number, most: number): number | null => {
+	const number = numberOr(value);
+	return number === null ? null : Math.min(most, Math.max(least, number));
+};
 /** A Battle.net ID as the site sends it: a string of digits, or a number from an older site. */
 const idOr = (value: unknown): string | null => {
 	if (typeof value === 'number' && Number.isSafeInteger(value)) return String(value);
@@ -182,18 +192,21 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/device/link`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ name })
+			body: JSON.stringify({ name }),
+			patienceMs: PATIENCE.quick
 		});
 		const body = (await bodyOf(response)) as Partial<LinkStarted>;
 		if (!response.ok || !body.deviceCode || !body.userCode || !body.verifyUrl) {
 			throw new Error('The site couldn’t start linking just now.');
 		}
+		// The times are held to what a link can sensibly take, so a broken answer can neither ask
+		// without pause nor wait for ever; the site's own values stand in for anything it didn't say.
 		return {
 			deviceCode: body.deviceCode,
 			userCode: body.userCode,
 			verifyUrl: body.verifyUrl,
-			expiresIn: body.expiresIn ?? 600,
-			interval: body.interval ?? 3
+			expiresIn: withinOr(body.expiresIn, 10, 3600) ?? 600,
+			interval: withinOr(body.interval, 1, 60) ?? 3
 		};
 	}
 
@@ -201,7 +214,8 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/device/token`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ deviceCode })
+			body: JSON.stringify({ deviceCode }),
+			patienceMs: PATIENCE.quick
 		});
 		const body = await bodyOf(response);
 		if (body.status === 'linked' && typeof body.token === 'string') {
@@ -219,20 +233,21 @@ export class Api {
 
 	async me(): Promise<Me> {
 		const response = await this.#fetch(`${this.server}/api/device/me`, {
-			headers: this.#headers({ accept: 'application/json' })
+			headers: this.#headers({ accept: 'application/json' }),
+			patienceMs: PATIENCE.quick
 		});
 		if (response.status === 401) throw new Unlinked();
 		const body = (await bodyOf(response)) as Partial<Record<keyof Me, unknown>> & { ok?: boolean };
-		if (!response.ok || !body.ok || !body.addon) throw new Error('The site didn’t answer.');
+		if (!response.ok || !body.ok) throw new Error('The site didn’t answer.');
 		const art = (body.art ?? {}) as Record<string, unknown>;
+		const addon = (body.addon ?? {}) as Record<string, unknown>;
 		return {
 			battletag: textOr(body.battletag),
 			battlenetId: idOr(body.battlenetId),
 			kept: (Array.isArray(body.kept) ? body.kept : [])
 				.map(keptOf)
 				.filter((kept): kept is Kept => kept !== null),
-			listed: Array.isArray(body.listed) ? (body.listed as Me['listed']) : [],
-			addon: body.addon as Me['addon'],
+			addon: { version: textOr(addon.version) },
 			art: { classIcons: textOr(art.classIcons) }
 		};
 	}
@@ -240,7 +255,8 @@ export class Api {
 	async unlink(): Promise<void> {
 		await this.#fetch(`${this.server}/api/device/me`, {
 			method: 'DELETE',
-			headers: this.#headers()
+			headers: this.#headers(),
+			patienceMs: PATIENCE.quick
 		});
 	}
 
@@ -248,7 +264,8 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/uploads/plan`, {
 			method: 'POST',
 			headers: this.#headers({ 'content-type': 'application/json' }),
-			body: JSON.stringify(plan)
+			body: JSON.stringify(plan),
+			patienceMs: PATIENCE.quick
 		});
 		if (response.status === 401) throw new Unlinked();
 		const body = await bodyOf(response);
@@ -278,7 +295,8 @@ export class Api {
 			{
 				method: 'PUT',
 				headers: this.#headers({ 'content-type': 'application/gzip' }),
-				body: gz
+				body: gz,
+				patienceMs: PATIENCE.send
 			}
 		);
 		if (response.status === 401) throw new Unlinked();
@@ -303,7 +321,9 @@ export class Api {
 		const response = await this.#fetch(`${this.server}/api/uploads/done`, {
 			method: 'POST',
 			headers: this.#headers({ 'content-type': 'application/json' }),
-			body: JSON.stringify({ guid })
+			body: JSON.stringify({ guid }),
+			// The site rebuilds the character before it answers, which can take a while for a long one.
+			patienceMs: PATIENCE.send
 		});
 		if (response.status === 401) throw new Unlinked();
 		return response.ok;

@@ -59,7 +59,8 @@ const LANES = 4;
  * and tried again later without a word to the player.
  */
 const TURNED_AWAY: Record<string, string> = {
-	'kept-elsewhere': 'Another account already keeps this character.',
+	'kept-elsewhere':
+		'Another account already keeps this character. If it’s yours, tell us from the support page at widsith.app/support.',
 	'no-region': 'This recording doesn’t say which region its realm is in.',
 	'not-a-character': 'This recording names no character.'
 };
