@@ -17,7 +17,8 @@
 		paused = false,
 		accountUrl,
 		onswitch,
-		onopen
+		onopen,
+		onpictures
 	}: {
 		character: CharacterView;
 		/** Show the game folder, for a name found in two folders. */
@@ -27,6 +28,8 @@
 		accountUrl: string;
 		onswitch: (on: boolean) => Promise<void>;
 		onopen: (url: string) => void;
+		/** Opens the Screenshots folder of a game folder in Explorer. */
+		onpictures: (gameFolder: string) => void;
 	} = $props();
 
 	const known = $derived(character.classID === null ? null : (CLASSES[character.classID] ?? null));
@@ -250,10 +253,22 @@
 			</p>
 		{/if}
 		{#if unverified}
-			<p class="verify">
+			<p class="aside">
 				<span>Not yet verified on Battle.net</span>
 				<button type="button" class="link" onclick={() => onopen(accountUrl)}
 					>Verify on {SITE_NAME} <Icon name="out" size={12} /></button
+				>
+			</p>
+		{/if}
+		<!-- The pictures are on this PC whether or not the character is sent, so always said. -->
+		{#if character.pictures > 0 && character.gameFolder}
+			{@const folder = character.gameFolder}
+			<p class="aside">
+				<span
+					>{character.pictures === 1 ? '1 picture' : `${character.pictures} pictures`} on this PC</span
+				>
+				<button type="button" class="link" onclick={() => onpictures(folder)}
+					>Open the folder <Icon name="folder" size={12} /></button
 				>
 			</p>
 		{/if}
@@ -415,8 +430,9 @@
 		content: ' · ';
 		white-space: pre;
 	}
-	/* Quieter second line, indented to the status text rather than its icon. */
-	.state .verify {
+	/* Quieter lines under the status, indented to the status text rather than its icon: whether
+	   Battle.net lists the character, and the addon's pictures of it on this PC. */
+	.state .aside {
 		flex-wrap: wrap;
 		gap: 2px 12px;
 		margin-top: 4px;
@@ -424,10 +440,15 @@
 		color: var(--muted);
 		font-size: 13.5px;
 	}
-	.state .verify .link {
+	/* With no status line above (an account not linked yet), it stands at the start. */
+	.state .aside:first-child {
+		margin-top: 0;
+		padding-left: 0;
+	}
+	.state .aside .link {
 		font-size: 13.5px;
 	}
-	.state .verify .link :global(svg) {
+	.state .aside .link :global(svg) {
 		margin-top: 0;
 		color: inherit;
 	}

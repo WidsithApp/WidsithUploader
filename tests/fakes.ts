@@ -20,18 +20,18 @@ export interface Client {
 }
 
 /**
- * A recording file as the game writes it: `sessions` are [serverTime, extraLines, closed, player],
- * `player` the GUID its SESSION line names, the table's `guid` unless said: another is an
+ * A recording file as the game writes it: `sessions` are [serverTime, extraLines, closed, player,
+ * more], `player` the GUID its SESSION line names, the table's `guid` unless said: another is an
  * earlier character of the same name, deleted in the game, whose sessions the file still holds.
- * `earlier`: as the addon wrote it under its earlier name, WoWJourney. A session with extra lines
- * also ends with a /say, as older versions of the addon wrote one, which is never sent. `client`:
- * the game its SESSION lines name, Retail unless said; an empty version and a null project name
- * none.
+ * `more`: lines of the session's own, written after the rest. `earlier`: as the addon wrote it
+ * under its earlier name, WoWJourney. A session with extra lines also ends with a /say, as older
+ * versions of the addon wrote one, which is never sent. `client`: the game its SESSION lines
+ * name, Retail unless said; an empty version and a null project name none.
  */
 export function recording(
 	guid: string,
 	name: string,
-	sessions: [number, number, boolean?, string?][],
+	sessions: [number, number, boolean?, string?, string[]?][],
 	region = 1,
 	earlier = false,
 	client: Client = {}
@@ -39,12 +39,13 @@ export function recording(
 	const prefix = earlier ? 'WoWJourney' : 'Widsith';
 	const version = client.clientVersion ?? '12.1.0';
 	const project = client.projectID === undefined ? 1 : (client.projectID ?? '');
-	const containers = sessions.map(([serverTime, extra, closed = true, player = guid], index) => {
+	const containers = sessions.map(([serverTime, extra, closed = true, player = guid, more = []], index) => {
 		const lines = [
 			`0\tSESSION\t${serverTime}\t0.2.24\t1\t${version}\t69875\t${project}\tenUS\t1\t0\t${player}`
 		];
 		for (let i = 1; i <= extra; i++) lines.push(`${i * 1000}\tPOS\t37\t0.5\t0.5\t-9000\t300\t50`);
 		if (extra > 0) lines.push(`${extra * 1000 + 500}\tSPEECH\tsay\t7\tWell met`);
+		lines.push(...more);
 		return `\t\t{
 			["encoding"] = "raw",
 			["chunks"] = {
@@ -75,6 +76,18 @@ ${prefix}UI = {
 	["icon"] = { ["x"] = 10 },
 }
 `;
+}
+
+/**
+ * The name the game gives a picture taken at `at` (ms since the epoch), on this computer's clock,
+ * whatever its time zone.
+ */
+export function pictureName(at: number, extension = 'jpg'): string {
+	const d = new Date(at);
+	const two = (n: number) => String(n).padStart(2, '0');
+	const date = `${two(d.getMonth() + 1)}${two(d.getDate())}${two(d.getFullYear() % 100)}`;
+	const time = `${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
+	return `WoWScrnShot_${date}_${time}.${extension}`;
 }
 
 interface KeptOnSite {
@@ -386,6 +399,16 @@ export class FakeHost implements Host {
 		return file.text;
 	};
 	addons = async () => this.addonsFound;
+	/** The files in each game folder's Screenshots folder, by the game folder, and every listing. */
+	screenshots = new Map<string, string[]>();
+	listings: string[] = [];
+	/** The Screenshots folders opened, by their game folder. */
+	openedFolders: string[] = [];
+	listScreenshots = async (gameFolder: string) => {
+		this.listings.push(gameFolder);
+		return [...(this.screenshots.get(gameFolder) ?? [])];
+	};
+	openScreenshots = async (gameFolder: string) => void this.openedFolders.push(gameFolder);
 	secret = {
 		get: async (key: string) => this.tokens.get(key) ?? null,
 		set: async (key: string, value: string) => void this.tokens.set(key, value),
