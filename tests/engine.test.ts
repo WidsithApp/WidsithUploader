@@ -8,6 +8,7 @@ import {
 	FakeUpdates,
 	GUEST,
 	OWNER,
+	pictureName,
 	recording,
 	SEVRA
 } from './fakes.ts';
@@ -529,6 +530,116 @@ describe('an earlier character in a file', () => {
 			[`${path}#${OLD}`, 'skipped']
 		]);
 		expect(site.kept.has(OLD)).toBe(false);
+	});
+});
+
+describe('the addon’s pictures', () => {
+	const GAME = 'E:\\World of Warcraft\\_retail_';
+	const at = (offset: number) => T * 1000 + offset;
+	/** Sevra's recording with three pictures the addon took and one she took herself. */
+	function photographed() {
+		const site = new FakeSite();
+		const host = new FakeHost(site);
+		const path = host.save(
+			'Sevra',
+			recording(SEVRA, 'Sevra', [
+				[T, 1, true, SEVRA, ['5000\tSHOT\tlevel', '6000\tSHOT', '9000\tSHOT\tzone']],
+				[T + 3600, 0, true, SEVRA, ['2000\tSHOT\tboss']]
+			])
+		);
+		host.screenshots.set(GAME, [
+			pictureName(at(4000)),
+			pictureName(at(4000), 'tga'),
+			pictureName(at(6000)),
+			pictureName(at(9000)),
+			pictureName((T + 3600) * 1000 + 1000),
+			'desktop.ini'
+		]);
+		host.wait(MINUTE);
+		return { site, host, engine: new Engine(host), path };
+	}
+
+	it('are counted on the card by the files still there, sent or not', async () => {
+		const { engine, host } = photographed();
+		await engine.start();
+		expect(row(engine, 'Sevra')).toMatchObject({
+			status: 'unlinked',
+			pictures: 3,
+			gameFolder: GAME
+		});
+		expect(host.listings).toEqual([GAME]);
+
+		// The player deletes one: it is no longer counted at the next look.
+		host.screenshots.set(
+			GAME,
+			(host.screenshots.get(GAME) ?? []).filter((name) => name !== pictureName(at(9000)))
+		);
+		await engine.tick();
+		expect(row(engine, 'Sevra').pictures).toBe(2);
+
+		// And all of them: nothing to say.
+		host.screenshots.set(GAME, []);
+		await engine.tick();
+		expect(row(engine, 'Sevra').pictures).toBe(0);
+	});
+
+	it('keep their count when the folder can’t be listed for a moment', async () => {
+		const { engine, host } = photographed();
+		await engine.start();
+		host.listScreenshots = async () => {
+			throw new Error('the drive went away');
+		};
+		await engine.tick();
+		expect(row(engine, 'Sevra').pictures).toBe(3);
+	});
+
+	it('aren’t looked for under a character the addon never photographed', async () => {
+		const { engine, host } = setup();
+		await engine.start();
+		expect(row(engine, 'Sevra').pictures).toBe(0);
+		expect(host.listings).toEqual([]);
+	});
+
+	it('of an earlier character in a file are its own', async () => {
+		const OLD = 'Player-1071-00000OLD';
+		const site = new FakeSite();
+		const host = new FakeHost(site);
+		const path = host.save(
+			'Sevra',
+			recording(SEVRA, 'Sevra', [
+				[T, 0, true, OLD, ['1000\tSHOT\tdeath']],
+				[T + 5000, 0, true, SEVRA, ['1000\tSHOT\tmount', '2000\tSHOT\tlevel']]
+			])
+		);
+		host.screenshots.set(GAME, [
+			pictureName(at(1000)),
+			pictureName((T + 5000) * 1000 + 1000),
+			pictureName((T + 5000) * 1000 + 2000)
+		]);
+		host.wait(MINUTE);
+		const engine = new Engine(host);
+		await engine.start();
+		const pictures = engine.view.characters.map((c) => [c.key, c.pictures]);
+		expect(pictures).toEqual([
+			[path, 2],
+			[`${path}#${OLD}`, 1]
+		]);
+	});
+
+	it('are found in a file read before the app looked for them, by reading it once more', async () => {
+		const { engine, host, path } = photographed();
+		await engine.start();
+		const saved = JSON.parse(host.state ?? '{}');
+		delete saved.files[path].shots;
+		host.state = JSON.stringify(saved);
+		const reads = host.reads.length;
+		const again = new Engine(host);
+		await again.start();
+		expect(host.reads).toHaveLength(reads + 1);
+		expect(row(again, 'Sevra').pictures).toBe(3);
+		// And not again after that.
+		await again.tick();
+		expect(host.reads).toHaveLength(reads + 1);
 	});
 });
 

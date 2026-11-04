@@ -3,6 +3,7 @@
 // new, linking, setup, linked, paused, empty, update; `&state=downloading|failed` for update).
 //
 // Pemba (Retail) and Brannoc (Forever) are both unverified; only Pemba should show the notice.
+// Sevra and Velkis have pictures the addon took on this computer.
 
 import type { CharacterView, View } from '../core/engine.ts';
 import type { Controller, Shell } from './controller.ts';
@@ -55,6 +56,8 @@ function character(partial: Partial<CharacterView> & { name: string }): Characte
 		firstSeen: now - 30 * DAY,
 		isNew: false,
 		sentSinceLooked: false,
+		pictures: 0,
+		gameFolder: `E:\\World of Warcraft\\${partial.flavor ?? '_retail_'}`,
 		...partial,
 		classIcon:
 			partial.classIcon ??
@@ -128,6 +131,7 @@ const CHARACTERS: CharacterView[] = [
 		sentAt: now - 40 * 60000,
 		sentSinceLooked: true,
 		sittings: 41,
+		pictures: 12,
 		...kept('Sevra', 31, 'Dwarf', 52.9, now - 50 * 60000)
 	}),
 	character({
@@ -177,6 +181,7 @@ const CHARACTERS: CharacterView[] = [
 		sharing: 'private',
 		upToDate: false,
 		sentAt: now - 9 * DAY,
+		pictures: 1,
 		...kept('Velkis', 40, 'Orc', 77.1, now - HOUR)
 	}),
 	character({
@@ -516,7 +521,8 @@ export function demo(): { controller: Controller; shell: Shell } {
 			pickFolder: async () => ({ root: null, picked: false }),
 			startsWithWindows: async () => true,
 			setStartsWithWindows: nothing,
-			openTaskbarSettings: () => {}
+			openTaskbarSettings: () => {},
+			openScreenshots: () => {}
 		}
 	};
 }

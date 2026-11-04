@@ -117,6 +117,7 @@
 		accountUrl="{shell.server}/account"
 		onswitch={(on) => controller.setUploading(character.key, on)}
 		onopen={shell.open}
+		onpictures={shell.openScreenshots}
 	/>
 {/snippet}
 

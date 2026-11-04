@@ -60,4 +60,6 @@ export interface Shell {
 	 * no app may promote its own, so the window can only send the player there.
 	 */
 	openTaskbarSettings(): void;
+	/** Opens the Screenshots folder of a game folder (a card's `gameFolder`) in Explorer. */
+	openScreenshots(gameFolder: string): void;
 }
