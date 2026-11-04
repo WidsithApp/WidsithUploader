@@ -2,6 +2,10 @@
 
 Each version of Widsith Uploader, newest first, with the date it was handed out. An installed copy updates itself to the newest version within a few hours of its release.
 
+## 0.4.8 · 2026-11-04
+
+- With "Screenshot highlights" on in the addon, each character's card says how many of the pictures it took are on this PC, and "Open the folder" opens the game's Screenshots folder. The app reads only the files' names, and no picture is sent.
+
 ## 0.4.7 · 2026-10-30
 
 - A new install greets you first. It asks whether the app should start when you sign in to Windows, says that closing the window leaves it in the tray, and opens the taskbar settings where you can keep its icon in view.

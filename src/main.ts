@@ -81,7 +81,8 @@ async function real(): Promise<{ controller: Controller; shell: Shell }> {
 			},
 			startsWithWindows: () => autostart.isEnabled().catch(() => false),
 			setStartsWithWindows: (on) => (on ? autostart.enable() : autostart.disable()),
-			openTaskbarSettings: () => void openTaskbarSettings().catch(() => {})
+			openTaskbarSettings: () => void openTaskbarSettings().catch(() => {}),
+			openScreenshots: (gameFolder) => void host.openScreenshots(gameFolder).catch(() => {})
 		}
 	};
 }

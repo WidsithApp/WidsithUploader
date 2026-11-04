@@ -22,6 +22,7 @@
 // or after the app has been idle for a while, never during a send.
 import { Api, Unlinked, type Fetch, type Me, type Sharing } from './api.ts';
 import { APP_NAME, EARLIER_RECORDING_FILE, SITE_NAME, TIMING } from './config.ts';
+import { countPictures, shotTimes } from './pictures.ts';
 import {
 	asEarlier,
 	NotARecording,
@@ -46,6 +47,17 @@ export function isEarlierFile(path: string): boolean {
  */
 export function accountIdOf(folder: string): string | null {
 	return /^(\d+)#\d+$/.exec(folder)?.[1] ?? null;
+}
+
+/**
+ * The game folder a recording is under (`…\_retail_`), which holds the game's Screenshots folder
+ * too: the file's path less the seven folders and the file below it. Null for a path not laid out
+ * as the game lays it out.
+ */
+export function gameFolderOf(file: FoundFile): string | null {
+	const parts = file.path.split(/[\\/]/);
+	if (parts.length < 9 || parts[parts.length - 8] !== file.flavor) return null;
+	return parts.slice(0, -7).join('\\');
 }
 
 /** A recording file found in a game folder. */
@@ -82,6 +94,13 @@ export interface Host {
 	read(path: string): Promise<string>;
 	/** Where the addon is installed under one of them, and which version. */
 	addons(root: string): Promise<AddonFound[]>;
+	/**
+	 * The names of the files in a game folder's Screenshots folder, never what is in them; none
+	 * when there is no such folder. `gameFolder` is the one a recording is under (`…\_retail_`).
+	 */
+	listScreenshots(gameFolder: string): Promise<string[]>;
+	/** Opens a game folder's Screenshots folder in Explorer, for the player to look at. */
+	openScreenshots(gameFolder: string): Promise<void>;
 	/**
 	 * The tokens, kept by the system's credential store, one per key: the site's address alone
 	 * for a link made before accounts were told apart, else the address and the account's ID.
@@ -156,6 +175,8 @@ interface EarlierRecord extends Sending {
 	game: Game | null;
 	/** When its last session in the file began, in ms. */
 	lastStartedAt: number | null;
+	/** When the addon took a picture of it, in ms, as its sessions say. */
+	shots?: number[];
 }
 
 interface FileRecord extends Sending {
@@ -179,6 +200,11 @@ interface FileRecord extends Sending {
 	raceID?: number | null;
 	region?: number | null;
 	game?: Game | null;
+	/**
+	 * When the addon took a picture of the character, in ms, as its own sessions say. Missing from
+	 * a file read by an earlier version of the app, which is read again for them.
+	 */
+	shots?: number[];
 	/** Why it couldn't be read, when it couldn't. */
 	unreadable?: string;
 }
@@ -378,6 +404,13 @@ export interface CharacterView {
 	isNew: boolean;
 	/** Its last send finished since the player last looked. */
 	sentSinceLooked: boolean;
+	/**
+	 * How many of the pictures the addon took of it are still on this computer: files in the
+	 * game's Screenshots folder that match its SHOT lines, whatever is sent.
+	 */
+	pictures: number;
+	/** The game folder its recording is under, whose Screenshots folder holds them. */
+	gameFolder: string | null;
 }
 
 /** An account with recordings on this computer. */
@@ -528,6 +561,8 @@ export class Engine {
 	#addons: AddonFound[] = [];
 	#found: FoundFile[] = [];
 	#runtime = new Map<string, Runtime>();
+	/** How many of the addon's pictures of each row's character are on this computer, by row. */
+	#pictures = new Map<string, number>();
 	#linking: { deviceCode: string; userCode: string; verifyUrl: string; opened: boolean } | null =
 		null;
 	#notice: string | null = null;
@@ -1080,8 +1115,12 @@ export class Engine {
 			const record = this.#state.files[file.path];
 			const unchanged = record && record.modified === file.modified && record.size === file.size;
 			// Read once more if it was read before the app kept what the recording says of its game,
-			// or before it told the earlier characters in a file apart.
-			if (unchanged && ((record.game !== undefined && record.earlier) || record.unreadable)) {
+			// before it told the earlier characters in a file apart, or before it kept when the
+			// addon took its pictures.
+			if (
+				unchanged &&
+				((record.game !== undefined && record.earlier && record.shots) || record.unreadable)
+			) {
 				continue;
 			}
 			// The game may still be writing it: leave it for the next look.
@@ -1093,6 +1132,7 @@ export class Engine {
 			};
 			try {
 				const split = splitRecording(await this.#host.read(file.path));
+				const own = ownSessions(split);
 				const earlier: Record<string, EarlierRecord> = {};
 				for (const group of split.earlier) {
 					const before = record?.earlier?.[group.guid];
@@ -1103,6 +1143,7 @@ export class Engine {
 						sessions: group.sessions.length,
 						game: group.game,
 						lastStartedAt: starts.length ? Math.max(...starts) * 1000 : null,
+						shots: shotTimes(group.sessions),
 						sentModified: before?.sentModified ?? null,
 						sentAt: before?.sentAt ?? null,
 						owesDone: before?.owesDone
@@ -1114,12 +1155,13 @@ export class Engine {
 					guid: split.guid,
 					name: split.name,
 					realm: split.realm,
-					sessions: ownSessions(split).length,
+					sessions: own.length,
 					earlier,
 					classID: split.classID,
 					raceID: split.raceID,
 					region: split.region,
 					game: split.game,
+					shots: shotTimes(own),
 					...kept
 				};
 				for (const guid of [split.guid, ...Object.keys(earlier)]) {
@@ -1141,12 +1183,14 @@ export class Engine {
 					raceID: record?.raceID ?? null,
 					region: record?.region ?? null,
 					game: record?.game ?? null,
+					shots: record?.shots,
 					unreadable:
 						cause instanceof NotARecording ? cause.message : 'The file couldn’t be opened.',
 					...kept
 				};
 			}
 		}
+		await this.#countPictures();
 		this.#ready = true;
 		this.#publish();
 
@@ -1189,6 +1233,30 @@ export class Engine {
 		}
 		await this.#save();
 		this.#publish();
+	}
+
+	/**
+	 * Counts the addon's pictures of each character still on this computer, against the game's
+	 * Screenshots folder as it is now, so a picture the player deleted is no longer counted. A game
+	 * folder is listed only when a character under it has pictures to find, once each look; one
+	 * that couldn't be listed keeps the counts it had.
+	 */
+	async #countPictures(): Promise<void> {
+		const listed = new Map<string, string[] | null>();
+		const counts = new Map<string, number>();
+		for (const row of this.#rows()) {
+			const record = this.#state.files[row.file.path];
+			const shots = (row.former ? record?.earlier?.[row.former]?.shots : record?.shots) ?? [];
+			const folder = gameFolderOf(row.file);
+			if (shots.length === 0 || folder === null) continue;
+			if (!listed.has(folder)) {
+				listed.set(folder, await this.#host.listScreenshots(folder).catch(() => null));
+			}
+			const names = listed.get(folder);
+			const count = names ? countPictures(shots, names) : (this.#pictures.get(row.key) ?? 0);
+			if (count > 0) counts.set(row.key, count);
+		}
+		this.#pictures = counts;
 	}
 
 	/**
@@ -1609,7 +1677,9 @@ export class Engine {
 			classIcon: icons && classID !== null ? `${icons}/${classID}.png` : null,
 			firstSeen,
 			isNew: since(firstSeen),
-			sentSinceLooked: since(sending?.sentAt ?? null)
+			sentSinceLooked: since(sending?.sentAt ?? null),
+			pictures: this.#pictures.get(row.key) ?? 0,
+			gameFolder: gameFolderOf(file)
 		};
 	}
 
