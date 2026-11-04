@@ -59,12 +59,14 @@ describe('the addon’s pictures', () => {
 		expect(countPictures([at], ['desktop.ini', 'Thumbs.db', pictureName(at)])).toBe(1);
 	});
 
-	it('match a file named up to two seconds before the line, and no earlier or later', () => {
+	it('match a file named within five seconds of the line either way, and no further', () => {
 		const second = local(2026, 11, 4, 20, 15, 2);
 		const at = second + 900;
-		expect(countPictures([at], [pictureName(second - 2000)])).toBe(1);
-		expect(countPictures([at], [pictureName(second - 3000)])).toBe(0);
-		expect(countPictures([at], [pictureName(second + 1000)])).toBe(0);
+		expect(countPictures([at], [pictureName(second - 5000)])).toBe(1);
+		expect(countPictures([at], [pictureName(second - 6000)])).toBe(0);
+		// This computer's clock a little ahead of the game's.
+		expect(countPictures([at], [pictureName(second + 5000)])).toBe(1);
+		expect(countPictures([at], [pictureName(second + 6000)])).toBe(0);
 	});
 
 	it('match across the end of a year', () => {

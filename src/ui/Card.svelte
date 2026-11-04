@@ -268,7 +268,7 @@
 					>{character.pictures === 1 ? '1 picture' : `${character.pictures} pictures`} on this PC</span
 				>
 				<button type="button" class="link" onclick={() => onpictures(folder)}
-					>Open the folder <Icon name="folder" size={12} /></button
+					>Open the folder <Icon name="out" size={12} /></button
 				>
 			</p>
 		{/if}

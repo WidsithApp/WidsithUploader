@@ -543,15 +543,15 @@ describe('the addon’s pictures', () => {
 		const path = host.save(
 			'Sevra',
 			recording(SEVRA, 'Sevra', [
-				[T, 1, true, SEVRA, ['5000\tSHOT\tlevel', '6000\tSHOT', '9000\tSHOT\tzone']],
+				[T, 1, true, SEVRA, ['5000\tSHOT\tlevel', '9000\tSHOT\tzone', '20000\tSHOT']],
 				[T + 3600, 0, true, SEVRA, ['2000\tSHOT\tboss']]
 			])
 		);
 		host.screenshots.set(GAME, [
 			pictureName(at(4000)),
 			pictureName(at(4000), 'tga'),
-			pictureName(at(6000)),
 			pictureName(at(9000)),
+			pictureName(at(20000)),
 			pictureName((T + 3600) * 1000 + 1000),
 			'desktop.ini'
 		]);
