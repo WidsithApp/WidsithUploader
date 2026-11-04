@@ -97,8 +97,8 @@ export interface Me {
 	/** The account's Battle.net ID, which names its folder under the game's WTF/Account. */
 	battlenetId: string | null;
 	kept: Kept[];
-	/** The newest addon the site hands out. */
-	addon: { version: string; file: string; sha256: string };
+	/** The newest addon's version, or null when the site didn't say. */
+	addon: { version: string | null };
 	/** Where the game's class icons are: `<classIcons>/<classID>.png` is one class's. */
 	art: { classIcons: string | null };
 }
@@ -106,6 +106,11 @@ export interface Me {
 const numberOr = (value: unknown): number | null =>
 	typeof value === 'number' && Number.isFinite(value) ? value : null;
 const textOr = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+/** A number the site sent, held within what makes sense for it, or null when it sent none. */
+const withinOr = (value: unknown, least: number, most: number): number | null => {
+	const number = numberOr(value);
+	return number === null ? null : Math.min(most, Math.max(least, number));
+};
 /** A Battle.net ID as the site sends it: a string of digits, or a number from an older site. */
 const idOr = (value: unknown): string | null => {
 	if (typeof value === 'number' && Number.isSafeInteger(value)) return String(value);
@@ -194,12 +199,14 @@ export class Api {
 		if (!response.ok || !body.deviceCode || !body.userCode || !body.verifyUrl) {
 			throw new Error('The site couldn’t start linking just now.');
 		}
+		// The times are held to what a link can sensibly take, so a broken answer can neither ask
+		// without pause nor wait for ever; the site's own values stand in for anything it didn't say.
 		return {
 			deviceCode: body.deviceCode,
 			userCode: body.userCode,
 			verifyUrl: body.verifyUrl,
-			expiresIn: body.expiresIn ?? 600,
-			interval: body.interval ?? 3
+			expiresIn: withinOr(body.expiresIn, 10, 3600) ?? 600,
+			interval: withinOr(body.interval, 1, 60) ?? 3
 		};
 	}
 
@@ -231,15 +238,16 @@ export class Api {
 		});
 		if (response.status === 401) throw new Unlinked();
 		const body = (await bodyOf(response)) as Partial<Record<keyof Me, unknown>> & { ok?: boolean };
-		if (!response.ok || !body.ok || !body.addon) throw new Error('The site didn’t answer.');
+		if (!response.ok || !body.ok) throw new Error('The site didn’t answer.');
 		const art = (body.art ?? {}) as Record<string, unknown>;
+		const addon = (body.addon ?? {}) as Record<string, unknown>;
 		return {
 			battletag: textOr(body.battletag),
 			battlenetId: idOr(body.battlenetId),
 			kept: (Array.isArray(body.kept) ? body.kept : [])
 				.map(keptOf)
 				.filter((kept): kept is Kept => kept !== null),
-			addon: body.addon as Me['addon'],
+			addon: { version: textOr(addon.version) },
 			art: { classIcons: textOr(art.classIcons) }
 		};
 	}
