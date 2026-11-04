@@ -246,7 +246,6 @@ export class FakeSite {
 					modeLabel: 'Retail',
 					...this.cards.get(guid)
 				})),
-				listed: [],
 				addon: { version: this.addonVersion, file: '/downloads/addon.zip', sha256: 'x' },
 				art: { classIcons: this.classIcons }
 			});
