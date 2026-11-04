@@ -318,7 +318,8 @@
 		<p class="lead">It sends only to {host}.</p>
 		<p class="lead">
 			It reads the recordings the addon writes and the addon’s version number, and Battle.net’s list
-			of where the game is installed to find them. It never writes into the game’s folders.
+			of where the game is installed to find them. Of the addon’s screenshots it reads only the
+			names, never the pictures. It never writes into the game’s folders.
 		</p>
 		<p class="lead">
 			A computer with more than one Battle.net account is linked once per account, and each

@@ -321,7 +321,7 @@ describe('a character turned away by the site', () => {
 		expect(engine.view.characters[0].message).toMatch(/Another account already keeps/);
 		expect(site.kept.size).toBe(0);
 		expect(host.notices).toEqual([
-			'Sevra: Another account already keeps this character.'
+			'Sevra: Another account already keeps this character. If it’s yours, tell us from the support page at widsith.app/support.'
 		]);
 
 		await engine.tick();
