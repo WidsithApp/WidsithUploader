@@ -97,8 +97,6 @@ export interface Me {
 	/** The account's Battle.net ID, which names its folder under the game's WTF/Account. */
 	battlenetId: string | null;
 	kept: Kept[];
-	/** The characters Battle.net lists on the account. */
-	listed: { region: string; characterId: number; name: string; realm: string }[];
 	/** The newest addon the site hands out. */
 	addon: { version: string; file: string; sha256: string };
 	/** Where the game's class icons are: `<classIcons>/<classID>.png` is one class's. */
@@ -241,7 +239,6 @@ export class Api {
 			kept: (Array.isArray(body.kept) ? body.kept : [])
 				.map(keptOf)
 				.filter((kept): kept is Kept => kept !== null),
-			listed: Array.isArray(body.listed) ? (body.listed as Me['listed']) : [],
 			addon: body.addon as Me['addon'],
 			art: { classIcons: textOr(art.classIcons) }
 		};
