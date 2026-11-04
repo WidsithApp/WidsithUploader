@@ -883,6 +883,13 @@ async fn set_paused(
 }
 
 fn main() {
+    // A build that is handed out never opens a debugging port because the environment asked for
+    // one: WebView2 reads this variable when the window is made, and a port on it would let any
+    // process on the computer drive the window. A development build keeps it, for reading the
+    // window from outside (README).
+    if cfg!(feature = "public") {
+        std::env::remove_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS");
+    }
     tauri::Builder::default()
         // A second launch brings the first one's window forward instead of starting again.
         .plugin(tauri_plugin_single_instance::init(

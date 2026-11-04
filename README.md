@@ -80,7 +80,7 @@ set WIDSITH_SERVER=http://localhost:5188
 npm run dev
 ```
 
-To read the real app's window from a script, start it with the WebView's debugging port open and connect with any DevTools client. With `--hidden` it starts in the tray without showing its window.
+To read the real app's window from a script, start a development build with the WebView's debugging port open and connect with any DevTools client. A build that is handed out ignores the variable, so nothing on a player's computer can open its window that way. With `--hidden` it starts in the tray without showing its window.
 
 ```
 set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9555
