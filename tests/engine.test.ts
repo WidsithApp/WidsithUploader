@@ -919,6 +919,33 @@ describe('the addon', () => {
 		await engine.sendNow();
 		expect(engine.view.addon.state).toBe('missing');
 	});
+
+	it('is unknown, and the window goes on, when the site answers no version', async () => {
+		const made = setup();
+		made.site.addonVersion = 7;
+		const { engine } = await linked(made);
+		expect(engine.view.addon).toMatchObject({ state: 'unknown', latest: null });
+		// Every later look still publishes a view.
+		let views = 0;
+		engine.subscribe(() => views++);
+		await engine.sendNow();
+		expect(views).toBeGreaterThan(1);
+	});
+});
+
+describe('a link whose times the site answered badly', () => {
+	it('asks at the usual pace and runs out at the usual time', async () => {
+		const { engine, host, site } = setup();
+		host.onOpen = () => {};
+		site.linkTimes = { expiresIn: 'x', interval: 'x' };
+		await engine.start();
+		await engine.link();
+		// Nobody approves it: the poll runs on the fake clock until the link runs out.
+		await waitFor(() => engine.view.linking === null);
+		const asks = site.requests.filter((r) => r === 'POST /api/device/token').length;
+		expect(asks).toBe(600 / 3);
+		expect(engine.view.notice).toMatch(/ran out/);
+	});
 });
 
 describe('game folders', () => {
