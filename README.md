@@ -12,6 +12,7 @@ It reads:
 - `Widsith.lua` in each character's `SavedVariables` folder, and `WoWJourney.lua` there too: before version 0.3.0 the addon went by its earlier name, WoWJourney, and wrote its file by that name. No other saved file.
 - `Widsith.toc` in the addon's folder (or `WoWJourney.toc` where only the older copy is installed), for the addon's version.
 - Which browser Windows opens web links in, from your settings in the registry, so the window can say "Open Chrome" when it links the computer. The name is never sent.
+- The names of the files in the game's `Screenshots` folder, to count the pictures the addon took itself with "Screenshot highlights" on, so each character's card can say how many are on this PC. Only the names: no picture is opened. The card's "Open the folder" opens that folder in Explorer, and nothing else.
 
 It sends, to the one site named under About in its settings:
 
@@ -24,6 +25,7 @@ It also asks the same site, a little after it starts and then every six hours, w
 
 It never:
 
+- Reads or sends a picture. The ones the addon took stay in your game folder, and the app knows them only by their names.
 - Sends what your character said in /say or /yell. Older versions of the addon wrote those lines; the app leaves them out of every session before sending it, and the site keeps no chat.
 - Sends anything for a character the site doesn't keep yet until you have started uploading. That is done once, after linking, with your characters listed and a switch beside each, so you can leave any of them out before anything is sent.
 - Sends another account's recordings under your link. An account folder that isn't linked sends nothing, whoever is at the keyboard.
@@ -36,7 +38,7 @@ It never:
 - Writes into the game's folders.
 - Reads your recordings on the site, or deletes anything there. Its token can send sessions, ask which characters the account keeps so the cards can be drawn, and unlink itself; nothing else.
 
-These aren't promises resting on good behaviour alone. The window can't open files or reach the network by itself. Files are reached only through the commands in `src-tauri/src/main.rs`, and `read_recording` refuses any path that isn't a recording. Requests go only through an allow-list in `src-tauri/capabilities/default.json`. Every request the app can make is in `src/core/api.ts`, apart from the update feed and the new installer, which the Rust side fetches from the same site (`update_check` and `update_download` in `src-tauri/src/main.rs`).
+These aren't promises resting on good behaviour alone. The window can't open files or reach the network by itself. Files are reached only through the commands in `src-tauri/src/main.rs`: `read_recording` refuses any path that isn't a recording, and `list_screenshots` and `open_screenshots` refuse any folder that isn't one of the game's. Requests go only through an allow-list in `src-tauri/capabilities/default.json`. Every request the app can make is in `src/core/api.ts`, apart from the update feed and the new installer, which the Rust side fetches from the same site (`update_check` and `update_download` in `src-tauri/src/main.rs`).
 
 ## How it works
 

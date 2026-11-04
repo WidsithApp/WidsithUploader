@@ -1,7 +1,7 @@
 {
 	"$schema": "../gen/schemas/desktop-schema.json",
 	"identifier": "default",
-	"description": "Everything the window may ask for. Requests go to the site and nowhere else; the browser is opened only on the site; files are reached only through the app's own commands (src/main.rs), which open nothing but recordings.",
+	"description": "Everything the window may ask for. Requests go to the site and nowhere else; the browser is opened only on the site; files are reached only through the app's own commands (src/main.rs), which open nothing but recordings, list the names in a game folder's Screenshots folder, and open that folder.",
 	"windows": ["main"],
 	"permissions": [
 		"core:default",

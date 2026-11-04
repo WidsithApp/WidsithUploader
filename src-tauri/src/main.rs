@@ -9,6 +9,8 @@
 //   scan_recordings   which characters under it have a recording file
 //   read_recording    one such file's bytes, and no other file's
 //   addon_versions    which version of the addon is installed there
+//   list_screenshots  the names of the game's screenshots there, never the pictures
+//   open_screenshots  that Screenshots folder, opened in Explorer for the player
 //   secret_*          this computer's token, in Windows Credential Manager
 //   state_*           the app's own bookkeeping, in its settings folder
 //   computer_name     what to call this computer on the site
@@ -23,7 +25,7 @@
 
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -107,12 +109,15 @@ fn flavors(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Whether a game folder has the game's own `WTF` or `Interface` folder inside.
+fn holds_the_game(flavor: &Path) -> bool {
+    flavor.join("WTF").is_dir() || flavor.join("Interface").is_dir()
+}
+
 /// A folder that holds World of Warcraft: it has at least one game folder with the game's own
 /// `WTF` or `Interface` folder inside.
 fn is_install(root: &Path) -> bool {
-    flavors(root)
-        .iter()
-        .any(|flavor| flavor.join("WTF").is_dir() || flavor.join("Interface").is_dir())
+    flavors(root).iter().any(|flavor| holds_the_game(flavor))
 }
 
 fn shown(path: &Path) -> String {
@@ -373,6 +378,86 @@ fn addon_versions_blocking(root: String) -> Vec<Addon> {
         });
     }
     addons
+}
+
+// ---- Screenshots --------------------------------------------------------------------------------
+
+/// How the game begins the name of every screenshot it saves: `WoWScrnShot_`, then the date and
+/// time it was taken.
+const SCREENSHOT_PREFIX: &str = "WoWScrnShot_";
+
+/// Whether a path could be a game folder and nothing else, by its shape alone: a whole path, named
+/// between underscores, with no `..` in it.
+fn is_game_folder_path(path: &Path) -> bool {
+    path.is_absolute()
+        && !path
+            .components()
+            .any(|part| matches!(part, Component::ParentDir))
+        && is_flavor(&name_of(path))
+}
+
+/// Whether a path is a game folder of an install, `_retail_` and the like, with the game in it.
+fn is_game_folder(path: &Path) -> bool {
+    is_game_folder_path(path) && holds_the_game(path)
+}
+
+/// Whether a file's name is one the game gives a screenshot.
+fn is_screenshot_name(name: &str) -> bool {
+    name.len() > SCREENSHOT_PREFIX.len()
+        && name
+            .get(..SCREENSHOT_PREFIX.len())
+            .is_some_and(|start| start.eq_ignore_ascii_case(SCREENSHOT_PREFIX))
+}
+
+/// The names of the game's screenshots in a game folder's Screenshots folder, so the window can
+/// count the pictures the addon took. Names alone: no picture is opened. Refuses any folder that
+/// isn't a game folder; none when it has no Screenshots folder.
+#[tauri::command]
+async fn list_screenshots(folder: String) -> Result<Vec<String>, String> {
+    let failed = Err("The screenshots couldn't be listed.".into());
+    off_main(move || list_screenshots_blocking(folder), failed).await
+}
+
+fn list_screenshots_blocking(folder: String) -> Result<Vec<String>, String> {
+    let game = PathBuf::from(&folder);
+    if !is_game_folder(&game) {
+        return Err("Not a game folder.".into());
+    }
+    let Ok(entries) = fs::read_dir(game.join("Screenshots")) else {
+        return Ok(Vec::new());
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| is_screenshot_name(name))
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
+/// Opens a game folder's Screenshots folder in Explorer, when the player asks to see the pictures.
+/// Refuses any folder that isn't a game folder, so this opens that one kind of folder and nothing
+/// else; the window's own link opener stays limited to the site.
+#[tauri::command]
+async fn open_screenshots(app: AppHandle, folder: String) -> Result<(), String> {
+    let failed = Err("The Screenshots folder couldn't be opened.".into());
+    off_main(move || open_screenshots_blocking(&app, folder), failed).await
+}
+
+fn open_screenshots_blocking(app: &AppHandle, folder: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let game = PathBuf::from(&folder);
+    if !is_game_folder(&game) {
+        return Err("Not a game folder.".into());
+    }
+    let screenshots = game.join("Screenshots");
+    if !screenshots.is_dir() {
+        return Err("The game has no Screenshots folder there.".into());
+    }
+    app.opener()
+        .open_path(shown(&screenshots), None::<&str>)
+        .map_err(|error| error.to_string())
 }
 
 // ---- The tokens, and the app's own notes --------------------------------------------------------
@@ -810,6 +895,8 @@ fn main() {
             scan_recordings,
             read_recording,
             addon_versions,
+            list_screenshots,
+            open_screenshots,
             secret_get,
             secret_set,
             secret_clear,
@@ -928,6 +1015,70 @@ mod tests {
             "E:\\World of Warcraft\\_retail_\\WTF\\Account\\ACCT\\Realm\\..\\SavedVariables\\WoWJourney.lua",
         ] {
             assert!(!is_recording_path(Path::new(bad)), "{bad}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn only_a_game_folder_is_a_game_folder() {
+        for good in [
+            "E:\\World of Warcraft\\_retail_",
+            "D:\\Games\\World of Warcraft\\_forever_",
+            "E:\\_classic_era_",
+        ] {
+            assert!(is_game_folder_path(Path::new(good)), "{good}");
+        }
+        for bad in [
+            "_retail_",
+            "E:\\World of Warcraft",
+            "E:\\World of Warcraft\\_retail_\\Screenshots",
+            "E:\\World of Warcraft\\_retail_\\WTF\\..\\..\\_retail_",
+            "E:\\World of Warcraft\\_retail_\\..",
+            "C:\\Users\\someone\\Pictures",
+        ] {
+            assert!(!is_game_folder_path(Path::new(bad)), "{bad}");
+        }
+    }
+
+    #[test]
+    fn only_the_games_screenshots_are_listed_and_by_name_alone() {
+        let root = std::env::temp_dir().join(format!("widsith-screenshots-{}", std::process::id()));
+        let game = root.join("_retail_");
+        let screenshots = game.join("Screenshots");
+        fs::create_dir_all(game.join("WTF")).unwrap();
+        fs::create_dir_all(screenshots.join("WoWScrnShot_a folder")).unwrap();
+        for name in [
+            "WoWScrnShot_110426_201502.jpg",
+            "WoWScrnShot_110426_201502.tga",
+            "wowscrnshot_110426_201503.jpg",
+            "desktop.ini",
+            "holiday.png",
+        ] {
+            fs::write(screenshots.join(name), b"").unwrap();
+        }
+        let text = |path: &Path| path.to_string_lossy().into_owned();
+        let listed = list_screenshots_blocking(text(&game));
+        // A game folder without a Screenshots folder has none, and anything else is refused.
+        let other = root.join("_classic_");
+        fs::create_dir_all(other.join("Interface")).unwrap();
+        let none = list_screenshots_blocking(text(&other));
+        let refused = [
+            list_screenshots_blocking(text(&root)),
+            list_screenshots_blocking(text(&screenshots)),
+            list_screenshots_blocking(text(&root.join("_ptr_"))),
+        ];
+        let _ = fs::remove_dir_all(&root);
+        assert_eq!(
+            listed,
+            Ok(vec![
+                "WoWScrnShot_110426_201502.jpg".to_string(),
+                "WoWScrnShot_110426_201502.tga".to_string(),
+                "wowscrnshot_110426_201503.jpg".to_string(),
+            ])
+        );
+        assert_eq!(none, Ok(Vec::new()));
+        for answer in refused {
+            assert!(answer.is_err());
         }
     }
 

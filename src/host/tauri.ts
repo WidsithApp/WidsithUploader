@@ -1,8 +1,9 @@
 // The real computer: everything the engine asks of its host, answered by the app's own small
 // commands (src-tauri/src/main.rs) and by Tauri's plugins. The window has no way to read a file or
 // reach the network on its own. Files come only through `read_recording`, which opens nothing
-// but a recording, and requests go only through the HTTP plugin, which is allowed one site. The
-// one exception is the app's own update, which the Rust side fetches from the same site.
+// but a recording (`list_screenshots` gives names alone), and requests go only through the HTTP
+// plugin, which is allowed one site. The one exception is the app's own update, which the Rust
+// side fetches from the same site.
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -63,6 +64,10 @@ export async function tauriHost(): Promise<Host> {
 		read: async (path) =>
 			new TextDecoder().decode(await invoke<ArrayBuffer>('read_recording', { path })),
 		addons: (root) => invoke<AddonFound[]>('addon_versions', { root }),
+		// The game's Screenshots folder: its files' names to count the addon's pictures, and
+		// opened in Explorer when the player asks. No picture is ever read.
+		listScreenshots: (gameFolder) => invoke<string[]>('list_screenshots', { folder: gameFolder }),
+		openScreenshots: (gameFolder) => invoke<void>('open_screenshots', { folder: gameFolder }),
 		// One entry per link in the system's credential store, by the key the engine gives (the
 		// site's address, and the account's Battle.net ID for a link made since accounts were told
 		// apart).
