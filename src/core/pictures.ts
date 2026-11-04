@@ -3,18 +3,19 @@
 // With "Screenshot highlights" on, the addon takes a picture itself at a few moments (a level, a
 // boss, a new zone…) and writes a SHOT line saying why. The game saves every picture, the
 // player's own too, in the game folder's Screenshots folder, named by this computer's clock to the
-// second: WoWScrnShot_MMDDYY_HHMMSS.jpg. A SHOT line with a reason and a file named in the same
-// second or up to two seconds before it are the same picture: the game names the file as the
-// picture is taken, and the addon's line follows within about a second. A SHOT line without a
-// reason is a picture the player took with their own key, and is never counted.
+// second: WoWScrnShot_MMDDYY_HHMMSS.jpg. A SHOT line with a reason and a file named within a few
+// seconds of it are the same picture: the game names the file as the picture is taken, the addon's
+// line follows within about a second, and this computer's clock, which names the file, may stand
+// a few seconds from the game server's, which times the line. A SHOT line without a reason is a
+// picture the player took with their own key, and is never counted.
 //
 // Only what is still there is counted, so a picture the player deleted isn't. The files are known
 // by their names alone; no picture is ever opened.
 
 import type { SplitSession } from './sessions.ts';
 
-/** How long before its SHOT line's second the game may have named the picture, in ms. */
-const LEAD = 2000;
+/** How far from its SHOT line's second, either way, the game may have named the picture, in ms. */
+const SLACK = 5000;
 
 /**
  * When each picture the addon took in these sessions was taken, ms since the epoch, in order: the
@@ -67,8 +68,8 @@ export function countPictures(shots: number[], names: string[]): number {
 	// too early for one picture is too early for every later one.
 	for (const shot of [...shots].sort((a, b) => a - b)) {
 		const second = Math.floor(shot / 1000) * 1000;
-		while (next < files.length && files[next] < second - LEAD) next++;
-		if (next < files.length && files[next] <= second) {
+		while (next < files.length && files[next] < second - SLACK) next++;
+		if (next < files.length && files[next] <= second + SLACK) {
 			count++;
 			next++;
 		}
