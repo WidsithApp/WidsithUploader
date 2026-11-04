@@ -23,7 +23,7 @@
 			}
 		],
 		"security": {
-			"csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://*.public.blob.vercel-storage.com; connect-src ipc: http://ipc.localhost"
+			"csp": "default-src 'self'; base-uri 'none'; form-action 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://aap4obmj7p3arvth.public.blob.vercel-storage.com; connect-src ipc: http://ipc.localhost"
 		}
 	},
 	"bundle": {
@@ -55,6 +55,9 @@
 		}
 	},
 	"plugins": {
+		"http": {
+			"scopeRedirects": true
+		},
 		"updater": {
 			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQyNUEzQUQ2NzJCQUYzODAKUldTQTg3cHkxanBhUXZUM1BJSzVybmt2NHVOWDFpRThlUVBCOURIb2tXYlgySmhobjVwbUVoWDUK",
 			"endpoints": ["https://widsith.app/downloads/uploader-update.json"],
