@@ -2,7 +2,7 @@
 
 Each version of Widsith Uploader, newest first, with the date it was handed out. An installed copy updates itself to the newest version within a few hours of its release.
 
-## 0.4.10 · 2026-11-06
+## 0.4.10 · 2026-11-07
 
 - A character's card keeps up with the site. It is read again after every send, so the level and time played are the site's reading of the new play, and whenever the window comes to the front, so a character made Public in the browser reads Public on its card when you come back.
 - The card's button reads "View in Chrome", naming the browser it opens, with a link to copy for another browser under it, as linking does.
