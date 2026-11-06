@@ -21,7 +21,7 @@
 // Updates: a newer version is fetched when the site offers one and installed when the player asks,
 // or after the app has been idle for a while, never during a send.
 import { Api, Unlinked, type Fetch, type Me, type Sharing } from './api.ts';
-import { APP_NAME, EARLIER_RECORDING_FILE, SITE_NAME, TIMING } from './config.ts';
+import { APP_NAME, CLOSED_FLAVORS, EARLIER_RECORDING_FILE, SITE_NAME, TIMING } from './config.ts';
 import { countPictures, shotTimes } from './pictures.ts';
 import {
 	asEarlier,
@@ -1114,13 +1114,15 @@ export class Engine {
 		const roots = this.#roots();
 		if (refreshInstalls) {
 			const perRoot = await Promise.all(roots.map((r) => this.#host.addons(r).catch(() => [])));
-			this.#addons = perRoot.flat();
+			this.#addons = perRoot.flat().filter((addon) => !CLOSED_FLAVORS.includes(addon.flavor));
 		}
 
-		// Which recordings are there, and under which accounts.
+		// Which recordings are there, and under which accounts. A closed game's are left alone.
 		const scanned = await Promise.all(roots.map((r) => this.#host.scan(r).catch(() => [])));
 		const byPath = new Map<string, FoundFile>();
-		for (const file of scanned.flat()) byPath.set(file.path, file);
+		for (const file of scanned.flat()) {
+			if (!CLOSED_FLAVORS.includes(file.flavor)) byPath.set(file.path, file);
+		}
 		this.#found = [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 		for (const path of Object.keys(this.#state.files)) {
 			if (!byPath.has(path)) {

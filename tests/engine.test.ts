@@ -105,6 +105,19 @@ describe('before this computer is linked', () => {
 		expect(site.requests).toEqual([]);
 	});
 
+	it('never looks at a closed game’s folder, whose recordings stay as they are', async () => {
+		const { engine, host } = setup();
+		host.save('Averil', recording(AVERIL, 'Averil', [[T, 1]]), '_classic_beta_');
+		host.addonsFound = [
+			{ flavor: '_retail_', version: '0.2.24' },
+			{ flavor: '_classic_beta_', version: '0.2.20' }
+		];
+		host.wait(MINUTE);
+		await engine.start();
+		expect(engine.view.characters.map((c) => c.name)).toEqual(['Sevra']);
+		expect(engine.view.addon.installed).toEqual([{ flavor: '_retail_', version: '0.2.24' }]);
+	});
+
 	it('leaves alone a file the game may still be writing', async () => {
 		const { engine, host } = setup();
 		host.save('Averil', recording(AVERIL, 'Averil', [[T, 1]]));

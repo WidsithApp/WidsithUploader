@@ -33,7 +33,16 @@
 	}
 </script>
 
-<button type="button" class={main ? 'btn-main' : 'btn-alt'} onclick={() => onopen(url)}
-	>{words} in {browser ?? 'your browser'} <Icon name="out" size={13} /></button
->
-<button type="button" class="link quiet" onclick={copy}>{copied ? 'Copied' : 'Copy the link'}</button>
+<!-- The pair sits in the caller's row as two things, unless the caller lays the pair out itself. -->
+<span class="open">
+	<button type="button" class={main ? 'btn-main' : 'btn-alt'} onclick={() => onopen(url)}
+		>{words} in {browser ?? 'your browser'} <Icon name="out" size={13} /></button
+	>
+	<button type="button" class="link quiet" onclick={copy}>{copied ? 'Copied' : 'Copy the link'}</button>
+</span>
+
+<style>
+	.open {
+		display: contents;
+	}
+</style>
