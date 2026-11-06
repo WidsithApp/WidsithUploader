@@ -29,8 +29,15 @@ export const TIMING = {
 	unreadableAfter: MINUTE,
 	/** How often the game's folders are looked for again. */
 	installs: 5 * MINUTE,
-	/** How long what the site said about the account is trusted. */
+	/**
+	 * What the site said about the account (which characters it keeps, each one's level and
+	 * sharing) is asked again after every send that went through, since the site read what was
+	 * sent; when the player looks at the window and the answer is older than `accountFresh`, since
+	 * a change made on the site should show when they come back to the window; and in any case
+	 * once it is older than `account`.
+	 */
 	account: 30 * MINUTE,
+	accountFresh: MINUTE,
 	/** After the site can't be reached: wait this long, doubling each time, up to `retryMax`. */
 	retry: 30 * SECOND,
 	retryMax: 10 * MINUTE,

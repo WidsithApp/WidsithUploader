@@ -1,6 +1,7 @@
 <script lang="ts">
-	// Everything about the app rather than the characters, in four tabs: what is sent and when the
-	// app runs, where the game is, this computer's link to the site, and what the app is.
+	// Everything about the app rather than the characters, in four tabs of cards (Section.svelte,
+	// the form the site's account settings use): what is sent and when the app runs, where the
+	// game is, this computer's link to the site, and what the app is.
 
 	import { version } from '../../package.json';
 	import { APP_NAME, SITE_NAME } from '../core/config.ts';
@@ -8,6 +9,8 @@
 	import { flavorName, isOlder } from '../core/version.ts';
 	import type { Controller, Shell } from './controller.ts';
 	import Icon from './Icon.svelte';
+	import Section from './Section.svelte';
+	import Switch from './Switch.svelte';
 	import { ago } from './words.ts';
 
 	let {
@@ -103,6 +106,44 @@
 		if (list.length <= 1) return list[0] ?? '';
 		return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 	}
+
+	/** The addon's card in one sentence. */
+	const addonLine = $derived.by(() => {
+		switch (view.addon.state) {
+			case 'missing':
+				return `The ${SITE_NAME} addon isn’t installed in any of the game folders.`;
+			case 'outdated':
+				return `Version ${view.addon.latest} is out, and you have ${installs('outdated')}.`;
+			case 'current':
+				return `The addon is up to date: ${installs('all')}.`;
+			default:
+				return `You have ${installs('all')}.`;
+		}
+	});
+
+	/** When play was last sent under a link, as the card says it. */
+	const lastSent = (at: number | null, hasRecordings: boolean) =>
+		!hasRecordings
+			? 'No recordings on this computer.'
+			: at !== null
+				? `Play was last sent ${ago(at)}.`
+				: 'Nothing has been sent yet.';
+
+	/** The app's own version, and whether a newer one is on its way. */
+	const versionLine = $derived.by(() => {
+		const update = view.update;
+		if (!update) return 'Up to date.';
+		switch (update.state) {
+			case 'downloading':
+				return `Version ${update.version} is on its way.`;
+			case 'ready':
+				return `Version ${update.version} is ready. It goes in when you restart the app, or by itself while you aren’t using it.`;
+			case 'installing':
+				return 'Updating.';
+			default:
+				return update.message ?? 'The update couldn’t be downloaded. It will be tried again.';
+		}
+	});
 </script>
 
 <!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -124,165 +165,132 @@
 
 <div class="panel" role="tabpanel" id="panel-{tab}" aria-labelledby="tab-{tab}">
 	{#if tab === 'sending'}
-		<h2 class="display">Characters</h2>
-		<p class="lead">
-			Every character of a linked account is kept Private on {SITE_NAME} as soon as it has play to
-			send, including the ones you play for the first time later. You can make one Public from its
-			page on {SITE_NAME}. To keep one on this PC only, switch off Uploading on its card. A character
-			you remove on {SITE_NAME} isn’t sent again until you switch it back on.
-		</p>
-
-		<h2 class="display">When it runs</h2>
-		<label class="check">
-			<input
-				type="checkbox"
-				checked={startsWithWindows === true}
-				disabled={startsWithWindows === null}
-				onchange={(event) => setStart(event.currentTarget.checked)}
-			/>
-			<span>Start when I sign in to Windows, so nothing waits to be sent</span>
-		</label>
-		<label class="check">
-			<input
-				type="checkbox"
-				checked={view.paused}
-				onchange={(event) => controller.setPaused(event.currentTarget.checked)}
-			/>
-			<span>Pause uploading, so nothing is sent until I resume it. The tray menu does the same.</span>
-		</label>
-		<p class="lead">
-			The uploader looks for new play every few seconds while it runs. You can ask it to look at
-			once.
-		</p>
-		<p class="actions">
-			<button type="button" class="btn" onclick={() => controller.sendNow()}
-				>Look for new play now</button
-			>
-		</p>
-	{:else if tab === 'folders'}
-		<h2 class="display">Game folders</h2>
-		<p class="lead">
-			The uploader reads the recordings in these World of Warcraft folders. It finds the game
-			through Battle.net by itself, and you can add a folder it missed.
-		</p>
-		<ul class="folders">
-			{#each view.roots as root (root)}
-				<li class="sheet folder">
-					<span class="path">{root}</span>
-					{#if added.has(root)}
-						<button type="button" class="link quiet" onclick={() => controller.removeRoot(root)}
-							>Remove</button
-						>
-					{/if}
-				</li>
-			{:else}
-				<li class="none">No game folder has been found on this computer.</li>
-			{/each}
-		</ul>
-		<p class="actions">
-			<button type="button" class="btn" onclick={onaddfolder}>Add a game folder…</button>
-		</p>
-		{#if folderNote}
-			<p class="trouble" role="status">{folderNote}</p>
-		{/if}
-	{:else if tab === 'computer'}
-		<h2 class="display">This computer</h2>
-		{#if view.links.length > 1}
-			<p class="lead">
-				It is linked to {SITE_NAME} for {view.links.length} accounts. Each sends only its own
-				recordings, under its own link.
+		<Section
+			title="Characters"
+			line="Each one is kept Private on {SITE_NAME}, and made Public from its page there."
+		>
+			<p>
+				To keep a character on this PC only, switch off Uploading on its card. One you removed on
+				{SITE_NAME} stays off until you switch it back on.
 			</p>
-			<ul class="links">
-				{#each view.links as link (link.id)}
-					<li>
-						<b>{link.battletag ?? 'An account'}</b>
-						<span class="when">
-							{#if !link.hasRecordings}
-								no recordings on this computer
-							{:else if link.lastSentAt !== null}
-								play last sent {ago(link.lastSentAt)}
-							{:else}
-								nothing sent yet
-							{/if}
-						</span>
+		</Section>
+		<Section
+			title="When it runs"
+			line="The app sits in the tray and looks for new play every few seconds."
+		>
+			<label class="row">
+				<span>
+					Start when I sign in to Windows
+					<span class="note">So nothing waits to be sent.</span>
+				</span>
+				<Switch
+					on={startsWithWindows === true}
+					label="Start when I sign in to Windows"
+					disabled={startsWithWindows === null}
+					onturn={setStart}
+				/>
+			</label>
+			<label class="row">
+				<span>
+					Uploading
+					<span class="note"
+						>Off pauses it: nothing is sent until it is on again, here or from the tray.</span
+					>
+				</span>
+				<Switch on={!view.paused} label="Uploading" onturn={(on) => controller.setPaused(!on)} />
+			</label>
+			<p class="actions">
+				<button type="button" class="btn" onclick={() => controller.sendNow()}
+					>Look for new play now</button
+				>
+			</p>
+		</Section>
+	{:else if tab === 'folders'}
+		<Section
+			title="Game folders"
+			line="The recordings are read from these: the game found through Battle.net, and any folder you add."
+		>
+			<ul class="folders">
+				{#each view.roots as root (root)}
+					<li class="row folder">
+						<span class="path">{root}</span>
+						{#if added.has(root)}
+							<button type="button" class="link quiet" onclick={() => controller.removeRoot(root)}
+								>Remove</button
+							>
+						{/if}
 					</li>
+				{:else}
+					<li class="note">No game folder has been found on this computer.</li>
 				{/each}
 			</ul>
-		{:else if view.linked}
-			<p class="lead">
-				It is linked to {SITE_NAME} as <b>{view.battletag ?? 'your account'}</b>.
-				{view.lastSentAt !== null
-					? `Play was last sent ${ago(view.lastSentAt)}.`
-					: 'Nothing has been sent from it yet.'}
-			</p>
-		{:else}
-			<p class="lead">
-				It isn’t linked to {SITE_NAME} yet, so nothing is sent from it. Linking is offered under
-				Characters.
-			</p>
-		{/if}
-
-		<h3>The addon</h3>
-		{#if view.addon.state === 'missing'}
-			<p class="lead">The {SITE_NAME} addon isn’t installed in any of the game folders.</p>
 			<p class="actions">
-				<button type="button" class="btn-alt" onclick={() => shell.open(addonPage)}
-					>Get the addon <Icon name="out" size={13} /></button
-				>
+				<button type="button" class="btn" onclick={onaddfolder}>Add a game folder…</button>
 			</p>
-		{:else if view.addon.state === 'outdated'}
-			<p class="lead">Version {view.addon.latest} is out, and you have {installs('outdated')}.</p>
-			<p class="actions">
-				<button type="button" class="btn-alt" onclick={() => shell.open(addonPage)}
-					>Get the update <Icon name="out" size={13} /></button
-				>
-			</p>
-		{:else if view.addon.state === 'current'}
-			<p class="lead">The addon is up to date.</p>
-		{:else}
-			<p class="lead">You have {installs('all')}.</p>
-		{/if}
-
-		<h3>The tray</h3>
-		<p class="lead">
-			Windows may tuck the uploader’s icon behind the arrow beside the clock. You can keep it in
-			view from the taskbar settings.
-		</p>
-		<p class="actions">
-			<button type="button" class="btn" onclick={() => shell.openTaskbarSettings()}
-				>Open taskbar settings <Icon name="out" size={13} /></button
-			>
-		</p>
-
-		{#if view.linked}
-			<h3>Another account</h3>
-			<p class="lead">
-				If someone else plays on this computer, or you have a second Battle.net account, each is
-				linked on its own and sends only its own recordings. Sign in on {SITE_NAME} as that
-				account when the page opens.
-			</p>
-			<p class="actions">
-				<button type="button" class="btn" disabled={linkingMore} onclick={linkMore}
-					>{linkingMore ? 'Opening…' : 'Link another account'} <Icon name="out" size={13} /></button
-				>
-			</p>
-		{/if}
-
+			{#if folderNote}
+				<p class="trouble" role="status">{folderNote}</p>
+			{/if}
+		</Section>
+	{:else if tab === 'computer'}
 		{#if !view.linked}
-			<!-- Nothing to unlink. -->
+			<Section
+				title="The link"
+				line="This computer isn’t linked to {SITE_NAME} yet, so nothing is sent from it."
+			>
+				<p>Linking is offered under Characters.</p>
+			</Section>
+		{:else if view.links.length > 1}
+			<Section
+				title="The links"
+				line="Linked to {SITE_NAME} for {view.links.length} accounts, each sending only its own recordings."
+			>
+				{#each view.links as link (link.id)}
+					{#if unlinking === link.id}
+						<p role="status">Unlinking {link.battletag ?? 'the account'}.</p>
+					{:else if confirmingUnlink === link.id}
+						<p class="actions">
+							<b>Unlink {link.battletag ?? 'this account'}?</b>
+							<button type="button" class="btn" onclick={() => unlink(link.id)}>Unlink</button>
+							<button type="button" class="link quiet" onclick={() => (confirmingUnlink = null)}
+								>Keep it linked</button
+							>
+						</p>
+					{:else}
+						<p class="row">
+							<span>
+								<b>{link.battletag ?? 'An account'}</b>
+								<span class="note">{lastSent(link.lastSentAt, link.hasRecordings)}</span>
+							</span>
+							<button type="button" class="link quiet" onclick={() => (confirmingUnlink = link.id)}
+								>Unlink…</button
+							>
+						</p>
+					{/if}
+				{/each}
+				<p class="note">
+					What you keep on {SITE_NAME} stays there when an account is unlinked, and nothing more is
+					sent for it until it is linked again.
+				</p>
+				<p class="actions">
+					<button type="button" class="btn" disabled={linkingMore} onclick={linkMore}
+						>{linkingMore ? 'Opening…' : 'Link another account'} <Icon name="out" size={13} /></button
+					>
+				</p>
+			</Section>
 		{:else}
-			<h3>Unlinking</h3>
-			<p class="lead">
-				You can unlink {view.links.length > 1 ? 'an account' : 'it'} here, or under Linked
-				computers in your settings on {SITE_NAME}. What you keep on {SITE_NAME} stays there, and
-				nothing more is sent from here until it is linked again.
-			</p>
-			{#each view.links as link (link.id)}
+			{@const link = view.links[0]}
+			<Section title="The link" line="Linked to {SITE_NAME} as {link.battletag ?? 'your account'}.">
+				<p>{lastSent(link.lastSentAt, link.hasRecordings)}</p>
+				<p class="note">
+					Unlinked, what you keep on {SITE_NAME} stays there, and nothing more is sent from here
+					until it is linked again. Another Battle.net account that plays on this computer is
+					linked on its own: sign in on {SITE_NAME} as it when the page opens.
+				</p>
 				{#if unlinking === link.id}
-					<p class="lead" role="status">Unlinking {link.battletag ?? 'the account'}.</p>
+					<p role="status">Unlinking.</p>
 				{:else if confirmingUnlink === link.id}
 					<p class="actions">
-						<span class="lead"><b>Unlink {link.battletag ?? 'this account'}?</b></span>
+						<b>Unlink this computer?</b>
 						<button type="button" class="btn" onclick={() => unlink(link.id)}>Unlink</button>
 						<button type="button" class="link quiet" onclick={() => (confirmingUnlink = null)}
 							>Keep it linked</button
@@ -291,67 +299,90 @@
 				{:else}
 					<p class="actions">
 						<button type="button" class="btn" onclick={() => (confirmingUnlink = link.id)}
-							>{view.links.length > 1
-								? `Unlink ${link.battletag ?? 'this account'}…`
-								: 'Unlink this computer…'}</button
+							>Unlink this computer…</button
+						>
+						<button type="button" class="btn" disabled={linkingMore} onclick={linkMore}
+							>{linkingMore ? 'Opening…' : 'Link another account'} <Icon name="out" size={13} /></button
 						>
 					</p>
 				{/if}
-			{/each}
+			</Section>
 		{/if}
-	{:else}
-		<h2 class="display">{APP_NAME} {version}</h2>
-		{#if !view.update}
-			<p class="lead">Up to date.</p>
-		{:else if view.update.state === 'downloading'}
-			<p class="lead">Version {view.update.version} is on its way.</p>
-		{:else if view.update.state === 'ready'}
-			<p class="lead">
-				Version {view.update.version} is ready. It goes in when you restart the app, or by itself
-				while you aren’t using it.
-			</p>
-		{:else if view.update.state === 'installing'}
-			<p class="lead">Updating.</p>
+
+		{#if view.addon.state === 'missing' || view.addon.state === 'outdated'}
+			<Section title="The addon" line={addonLine}>
+				<p class="actions">
+					<button type="button" class="btn-alt" onclick={() => shell.open(addonPage)}
+						>{view.addon.state === 'missing' ? 'Get the addon' : 'Get the update'}
+						<Icon name="out" size={13} /></button
+					>
+				</p>
+			</Section>
 		{:else}
-			<p class="lead trouble">{view.update.message}</p>
+			<Section title="The addon" line={addonLine} />
 		{/if}
-		<p class="lead">It sends only to {host}.</p>
-		<p class="lead">
-			It reads the recordings the addon writes and the addon’s version number, and Battle.net’s list
-			of where the game is installed to find them. Of the addon’s screenshots it reads only the
-			names, never the pictures. It never writes into the game’s folders.
-		</p>
-		<p class="lead">
-			A computer with more than one Battle.net account is linked once per account, and each
-			account’s recordings are sent only under its own link. An account nobody has linked sends
-			nothing.
-		</p>
-		<p class="lead">
-			It asks {host} for a newer version of itself a little after it starts and every six hours,
-			downloads one when there is, and installs it when you ask or by itself once the app has been
-			left alone for a while. Its link to your account is kept in Windows Credential Manager.
-		</p>
-		<p class="lead">
-			Using it is covered by the Terms of Service and the Privacy page on {host}. The licence is in
-			LICENSE.txt beside the app, and the source is on GitHub.
-		</p>
-		<p class="actions">
-			<button type="button" class="btn-alt" onclick={() => shell.open(shell.server)}
-				>Open {SITE_NAME} <Icon name="out" size={13} /></button
-			>
-			<button type="button" class="btn" onclick={() => shell.open(`${shell.server}/terms`)}
-				>Terms of Service <Icon name="out" size={13} /></button
-			>
-			<button type="button" class="btn" onclick={() => shell.open(`${shell.server}/privacy`)}
-				>Privacy <Icon name="out" size={13} /></button
-			>
-			<button
-				type="button"
-				class="btn"
-				onclick={() => shell.open('https://github.com/WidsithApp/WidsithUploader')}
-				>Source <Icon name="out" size={13} /></button
-			>
-		</p>
+
+		<Section
+			title="The tray"
+			line="Windows may tuck the app’s icon behind the arrow beside the clock."
+		>
+			<p class="actions">
+				<button type="button" class="btn" onclick={() => shell.openTaskbarSettings()}
+					>Open taskbar settings <Icon name="out" size={13} /></button
+				>
+			</p>
+		</Section>
+	{:else}
+		<Section title="{APP_NAME} {version}" line={versionLine}>
+			<p>
+				It sends only to {host}, and keeps its link to your account in Windows Credential Manager.
+			</p>
+			<p class="note">
+				A newer version is looked for every six hours, and goes in when you ask or by itself once
+				the app has been left alone for a while.
+			</p>
+			<p class="actions">
+				<button type="button" class="btn-alt" onclick={() => shell.open(shell.server)}
+					>Open {SITE_NAME} <Icon name="out" size={13} /></button
+				>
+				<button
+					type="button"
+					class="btn"
+					onclick={() => shell.open('https://github.com/WidsithApp/WidsithUploader')}
+					>Source <Icon name="out" size={13} /></button
+				>
+			</p>
+		</Section>
+		<Section title="What it reads" line="Only these, and it never writes into the game’s folders.">
+			<ul class="marked">
+				<li>
+					<Icon name="file" size={18} />
+					<span>The recordings the addon writes, and the addon’s version.</span>
+				</li>
+				<li>
+					<Icon name="folder" size={18} />
+					<span>Battle.net’s list of where the game is installed.</span>
+				</li>
+				<li>
+					<Icon name="camera" size={18} />
+					<span>The names of the addon’s screenshots, never the pictures.</span>
+				</li>
+			</ul>
+		</Section>
+		<Section
+			title="The terms"
+			line="Using it is covered by the Terms of Service and the Privacy page on {host}."
+		>
+			<p class="note">The licence is in LICENSE.txt beside the app.</p>
+			<p class="actions">
+				<button type="button" class="btn" onclick={() => shell.open(`${shell.server}/terms`)}
+					>Terms of Service <Icon name="out" size={13} /></button
+				>
+				<button type="button" class="btn" onclick={() => shell.open(`${shell.server}/privacy`)}
+					>Privacy <Icon name="out" size={13} /></button
+				>
+			</p>
+		</Section>
 	{/if}
 </div>
 
@@ -401,92 +432,26 @@
 		transition: none;
 	}
 	.panel {
-		padding-top: 20px;
+		padding-top: 18px;
 	}
-	h2 {
-		font-size: 19px;
-		font-weight: 600;
-		line-height: 1.25;
-	}
-	h2:not(:first-child) {
-		margin-top: 28px;
-	}
-	h3 {
-		margin-top: 22px;
-		font-size: 15.5px;
-		font-weight: 600;
-	}
-	.lead {
-		margin-top: 6px;
-		color: var(--ink-2);
-	}
-	.lead b {
-		color: var(--ink);
-		font-weight: 600;
-	}
-	/* The links, one line each: who, and when play was last sent under it. */
-	.links {
-		margin-top: 10px;
-		display: grid;
-		gap: 6px;
-	}
-	.links li {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 4px 10px;
-	}
-	.links b {
-		color: var(--ink);
-	}
-	.links .when {
-		color: var(--muted);
-		font-size: 14px;
-	}
-	.actions {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px 14px;
-		margin-top: 12px;
-	}
-	.check {
-		display: flex;
-		align-items: flex-start;
-		gap: 10px;
-		margin-top: 12px;
-		color: var(--ink);
+	/* A switch row is a label, so its words turn the switch too. */
+	label.row {
 		cursor: pointer;
 	}
-	.check input {
-		margin-top: 4px;
-		width: 16px;
-		height: 16px;
-		accent-color: var(--accent);
-	}
+	/* The folders, one a row, ruled apart. */
 	.folders {
 		display: grid;
-		gap: 8px;
-		margin-top: 14px;
 	}
 	.folder {
-		display: flex;
-		align-items: baseline;
-		gap: 12px;
-		padding: 10px 14px;
-		box-shadow: none;
+		padding: 8px 0;
+		border-top: 1px solid var(--rule);
+	}
+	.folder:first-child {
+		padding-top: 0;
+		border-top: 0;
 	}
 	.path {
-		flex: 1;
-		min-width: 0;
 		overflow-wrap: anywhere;
 		user-select: text;
-	}
-	.none {
-		color: var(--muted);
-	}
-	.trouble {
-		margin-top: 10px;
-		color: var(--seal);
 	}
 </style>

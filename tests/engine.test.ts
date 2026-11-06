@@ -427,6 +427,47 @@ describe('a kept character’s card', () => {
 		expect(engine.view.characters[0].savedAt).toBe(host.files.get(path)?.modified);
 		expect(engine.view.characters[0].lastPlayedMs).toBeNull();
 	});
+
+	const asks = (site: FakeSite) => site.requests.filter((r) => r === 'GET /api/device/me').length;
+
+	it('shows the site’s reading of new play as soon as it is sent', async () => {
+		const { engine, site, host } = await started();
+		expect(row(engine, 'Sevra').level).toBe(12);
+		// The character levelled; the site reads it from the session sent.
+		site.cards.set(SEVRA, { level: 13 });
+		host.save('Sevra', recording(SEVRA, 'Sevra', [[T, 3], [T + 5000, 2]]));
+		host.wait(MINUTE);
+		await engine.tick();
+		expect(row(engine, 'Sevra')).toMatchObject({ status: 'kept', upToDate: true, level: 13 });
+	});
+
+	it('shows a change made on the site when the player looks, once the answer is a minute old', async () => {
+		const { engine, site, host } = await started();
+		expect(row(engine, 'Sevra').sharing).toBe('private');
+		site.cards.set(SEVRA, { sharing: 'public' });
+		// Looked at again within the minute: the answer is trusted as it is.
+		host.wait(TIMING.accountFresh - 1000);
+		const before = asks(site);
+		await engine.looked();
+		expect(asks(site)).toBe(before);
+		expect(row(engine, 'Sevra').sharing).toBe('private');
+		// The player chose Public in the browser and came back to the window.
+		host.wait(2000);
+		await engine.looked();
+		expect(asks(site)).toBe(before + 1);
+		expect(row(engine, 'Sevra').sharing).toBe('public');
+		await engine.looked();
+		expect(asks(site)).toBe(before + 1);
+	});
+
+	it('isn’t asked for when the player looks while uploading is paused', async () => {
+		const { engine, site, host } = await started();
+		await engine.setPaused(true);
+		host.wait(TIMING.accountFresh + MINUTE);
+		const before = asks(site);
+		await engine.looked();
+		expect(asks(site)).toBe(before);
+	});
 });
 
 describe('an earlier character in a file', () => {

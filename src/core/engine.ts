@@ -957,12 +957,27 @@ export class Engine {
 		});
 	}
 
-	/** The window was shown: what was new or sent until now has been seen. */
+	/**
+	 * The window was shown, or came to the front: what was new or sent until now has been seen.
+	 * It is also when a change made on the site (Public chosen in the browser, say) should show,
+	 * so what the site said about each account is asked again when it is more than a minute old,
+	 * by a look that joins any already waiting. While uploading is paused the site is asked
+	 * nothing, as always.
+	 */
 	async looked(): Promise<void> {
 		this.#inView = true;
-		this.#state.lookedAt = this.#host.now();
+		const now = this.#host.now();
+		this.#state.lookedAt = now;
 		await this.#save();
 		this.#publish();
+		let stale = false;
+		for (const linked of this.#links.values()) {
+			if (now - linked.meAt > TIMING.accountFresh) {
+				linked.meDirty = true;
+				stale = true;
+			}
+		}
+		if (stale && !this.#state.paused) await this.tick();
 	}
 
 	/** The window was hidden again: an update may now go in by itself once the rest holds. */
@@ -1442,7 +1457,10 @@ export class Engine {
 					? `${outcome.refused} ${outcome.refused === 1 ? 'session was' : 'sessions were'} different from the copy already kept, and set aside.`
 					: null;
 				if (guid) this.#state.restored = this.#state.restored.filter((g) => g !== guid);
-				if (sharing) await this.#askAccount(linked);
+				// The site has read what was sent: its reading of the character (its level, its
+				// time played) is what the card shows, so it is asked for now rather than at the
+				// next half hour. A first send also tells which characters it keeps.
+				await this.#askAccount(linked);
 				return;
 			}
 			if (outcome.sent > 0) sending.owesDone = true;

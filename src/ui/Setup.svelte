@@ -4,8 +4,10 @@
 
 	import { SITE_NAME } from '../core/config.ts';
 	import type { CharacterView } from '../core/engine.ts';
+	import { realmLabel } from '../shared/realm.ts';
 	import { CLASSES } from './classes.ts';
 	import Face from './Face.svelte';
+	import Switch from './Switch.svelte';
 
 	let {
 		characters,
@@ -56,7 +58,7 @@
 
 	/** "Steamwheedle Cartel · Retail", plus the site's status when it has one. */
 	function under(c: CharacterView): string {
-		const parts = [c.realm, c.gameLabel];
+		const parts = [realmLabel(c.realm), c.gameLabel];
 		if (c.status === 'kept') parts.push(`already on ${SITE_NAME}`);
 		else if (c.status === 'removed') parts.push(`removed from ${SITE_NAME}`);
 		else if (c.sessions === 0) parts.push('no play recorded yet');
@@ -89,15 +91,12 @@
 					>
 					<span class="under">{under(c)}</span>
 				</div>
-				<button
-					type="button"
-					class="switch"
-					role="switch"
-					aria-checked={isOn(c)}
-					aria-label="Upload {c.name}"
+				<Switch
+					on={isOn(c)}
+					label="Upload {c.name}"
 					disabled={turning !== null || starting}
-					onclick={() => turn(c)}><span></span></button
-				>
+					onturn={() => turn(c)}
+				/>
 			</li>
 		{/each}
 	</ul>
@@ -160,34 +159,6 @@
 	.under {
 		color: var(--muted);
 		font-size: 13px;
-	}
-
-	/* Same switch as Card.svelte's. */
-	.switch {
-		position: relative;
-		flex: none;
-		width: 36px;
-		height: 20px;
-		border-radius: 999px;
-		background: var(--rule-2);
-		transition: background var(--t-fast) var(--ease-out);
-	}
-	.switch[aria-checked='true'] {
-		background: var(--accent);
-	}
-	.switch span {
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		background: var(--card);
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-		transition: transform var(--t-fast) var(--ease-out);
-	}
-	.switch[aria-checked='true'] span {
-		transform: translateX(16px);
 	}
 
 	.go {

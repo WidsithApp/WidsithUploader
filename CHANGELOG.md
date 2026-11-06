@@ -2,6 +2,14 @@
 
 Each version of Widsith Uploader, newest first, with the date it was handed out. An installed copy updates itself to the newest version within a few hours of its release.
 
+## 0.4.10 · 2026-11-06
+
+- A character's card keeps up with the site. It is read again after every send, so the level and time played are the site's reading of the new play, and whenever the window comes to the front, so a character made Public in the browser reads Public on its card when you come back.
+- The card's button reads "View in Chrome", naming the browser it opens, with a link to copy for another browser, as linking does.
+- A WoW Forever character's realm reads as it does on the site, "PvE" rather than the game's internal name.
+- "Up to date · 4 minutes ago", without the word "sent".
+- Settings and About are cards, each one subject with its switches, lists and buttons, in place of the paragraphs.
+
 ## 0.4.9 · 2026-11-05
 
 - A request to the site that never answers, as can happen after the PC sleeps or changes network, no longer stops the app for good. Each request now gives up after a set time and is tried again later, and the app says so on the character's card as it does for any other failure.
