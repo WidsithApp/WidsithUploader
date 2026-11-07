@@ -6,9 +6,12 @@
 	import { SITE_NAME } from '../core/config.ts';
 	import type { CharacterView } from '../core/engine.ts';
 	import { flavorName } from '../core/version.ts';
+	import { onRealm, realmLabel } from '../shared/realm.ts';
 	import { CLASSES } from './classes.ts';
 	import Face from './Face.svelte';
 	import Icon from './Icon.svelte';
+	import OpenInBrowser from './OpenInBrowser.svelte';
+	import Switch from './Switch.svelte';
 	import { ago, played } from './words.ts';
 
 	let {
@@ -16,8 +19,10 @@
 		showFlavor = false,
 		paused = false,
 		accountUrl,
+		browser,
 		onswitch,
 		onopen,
+		oncopy,
 		onpictures
 	}: {
 		character: CharacterView;
@@ -26,8 +31,12 @@
 		paused?: boolean;
 		/** The site's account page, where Battle.net verification happens. */
 		accountUrl: string;
+		/** The default browser's name, which View names; null when the computer can't say. */
+		browser: string | null;
 		onswitch: (on: boolean) => Promise<void>;
 		onopen: (url: string) => void;
+		/** Puts the page's address on the clipboard; false if the system wouldn't allow it. */
+		oncopy: (text: string) => Promise<boolean>;
 		/** Opens the Screenshots folder of a game folder in Explorer. */
 		onpictures: (gameFolder: string) => void;
 	} = $props();
@@ -44,7 +53,7 @@
 		]
 			.filter(Boolean)
 			.join(' ');
-		return [who, character.realm, showFlavor ? flavorName(character.flavor) : null]
+		return [who, realmLabel(character.realm), showFlavor ? flavorName(character.flavor) : null]
 			.filter(Boolean)
 			.join(' · ');
 	});
@@ -96,6 +105,22 @@
 		return list;
 	});
 
+	/** The sharing mark's explanation is open, until a click anywhere else or Escape. */
+	let explaining = $state(false);
+	$effect(() => {
+		if (!explaining) return;
+		const close = () => (explaining = false);
+		const key = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') close();
+		};
+		document.addEventListener('click', close);
+		document.addEventListener('keydown', key);
+		return () => {
+			document.removeEventListener('click', close);
+			document.removeEventListener('keydown', key);
+		};
+	});
+
 	let busy = $state(false);
 	async function turn(on: boolean) {
 		busy = true;
@@ -136,28 +161,35 @@
 			{/if}
 			{#if character.former}
 				<p class="older">
-					An earlier {character.name}{character.realm ? ` on ${character.realm}` : ''}. It isn’t in
-					the game any more; a newer character took its name.
+					{['An earlier ' + character.name, onRealm(character.realm)].filter(Boolean).join(' ')}. It
+					isn’t in the game any more; a newer character took its name.
 				</p>
 			{/if}
 		</div>
 
-		{#if kept && character.pageUrl && character.sharing !== null}
-			{@const url = `${character.pageUrl}#sharing`}
-			<button
-				type="button"
-				class="pill"
-				class:public={character.sharing === 'public'}
-				title="Change who sees it on {SITE_NAME}"
-				onclick={() => onopen(url)}
-			>
-				{#if character.sharing === 'public'}
-					<Icon name="globe" size={13} />Public
-				{:else}
-					<Icon name="lock" size={13} />Private
+		{#if kept && character.sharing !== null}
+			<!-- Who sees it is the site's choice, so the mark only says which, and where it is chosen. -->
+			<div class="sharing">
+				<button
+					type="button"
+					class="pill"
+					class:public={character.sharing === 'public'}
+					aria-expanded={explaining}
+					onclick={(event) => {
+						event.stopPropagation();
+						explaining = !explaining;
+					}}
+				>
+					{#if character.sharing === 'public'}
+						<Icon name="globe" size={13} />Public
+					{:else}
+						<Icon name="lock" size={13} />Private
+					{/if}
+				</button>
+				{#if explaining}
+					<p class="tip sheet" role="status">Who sees it is chosen on its page on {SITE_NAME}.</p>
 				{/if}
-				<Icon name="out" size={11} />
-			</button>
+			</div>
 		{/if}
 	</div>
 
@@ -215,7 +247,7 @@
 					<Icon name="check" size={14} />
 					<span>
 						Up to date on {SITE_NAME}{#if character.sentAt !== null}<span class="when"
-								>sent {ago(character.sentAt)}</span
+								>{ago(character.sentAt)}</span
 							>{/if}
 					</span>
 				</p>
@@ -228,6 +260,14 @@
 			<p>
 				<Icon name="laptop" size={15} /><span
 					>Its recording stays on this PC. Switch on to keep it on {SITE_NAME} as its own character.</span
+				>
+			</p>
+		{:else if character.status === 'skipped' && character.sharing !== null}
+			<!-- The site keeps it: what was sent stays, and only the play since is on this PC alone. -->
+			<p>
+				<Icon name="laptop" size={15} /><span
+					>Switched off. What was sent stays on {SITE_NAME}; play since then stays on this PC
+					until it is switched back on.</span
 				>
 			</p>
 		{:else if character.status === 'skipped'}
@@ -277,21 +317,12 @@
 	{#if uploading !== null}
 		<div class="foot">
 			{#if kept && character.pageUrl}
-				{@const url = character.pageUrl}
-				<button type="button" class="btn-main" onclick={() => onopen(url)}
-					>View on {SITE_NAME} <Icon name="out" size={13} /></button
-				>
+				<!-- Its page shows a Private character only to its player signed in, so the browser is named. -->
+				<OpenInBrowser words="View" url={character.pageUrl} {browser} {onopen} {oncopy} />
 			{/if}
-			<label class="switch">
+			<label class="uploading">
 				<span>Uploading</span>
-				<button
-					type="button"
-					role="switch"
-					aria-checked={uploading}
-					aria-label="Uploading {character.name}"
-					disabled={busy}
-					onclick={() => turn(!uploading)}><span></span></button
-				>
+				<Switch on={uploading} label="Uploading {character.name}" disabled={busy} onturn={turn} />
 			</label>
 		</div>
 	{/if}
@@ -347,10 +378,13 @@
 		font-size: 12.5px;
 	}
 
-	/* Private/Public pill. It's a button (opens the site's sharing setting), hence the hover border. */
+	/* Private/Public mark. A click opens one line saying where it is chosen, under the mark. */
+	.sharing {
+		position: relative;
+		flex: none;
+	}
 	.pill {
 		display: inline-flex;
-		flex: none;
 		align-items: center;
 		gap: 5px;
 		padding: 2px 9px 2px 8px;
@@ -367,12 +401,21 @@
 		color: color-mix(in oklab, var(--good) 70%, var(--ink));
 	}
 	.pill:hover,
-	.pill:focus-visible {
+	.pill:focus-visible,
+	.pill[aria-expanded='true'] {
 		border-color: var(--accent);
 	}
-	.pill > :global(svg:last-child) {
-		margin-left: 1px;
-		opacity: 0.7;
+	.tip {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		z-index: 1;
+		width: max-content;
+		max-width: 260px;
+		padding: 8px 11px;
+		color: var(--ink-2);
+		font-size: 13.5px;
+		line-height: 1.4;
 	}
 
 	.facts {
@@ -467,22 +510,30 @@
 		transition: width var(--t-base) var(--ease-out);
 	}
 
-	/* Footer: View on Widsith, and the switch on the right. */
+	/* Footer: View in the browser with its copy link under it, and the switch on the right. */
 	.foot {
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px 10px;
+		gap: 8px 12px;
 		margin-top: 14px;
 		padding-top: 12px;
 		border-top: 1px solid var(--rule);
 	}
-	.foot .btn-main {
+	.foot :global(.open) {
+		display: grid;
+		justify-items: start;
+		gap: 5px;
+	}
+	.foot :global(.btn-main) {
 		padding: 7px 13px;
 		font-size: 14px;
 	}
+	.foot :global(.link) {
+		margin-left: 2px;
+		font-size: 13px;
+	}
 
-	.switch {
+	.uploading {
 		display: inline-flex;
 		align-items: center;
 		gap: 9px;
@@ -490,31 +541,5 @@
 		color: var(--ink-2);
 		font-size: 14px;
 		cursor: pointer;
-	}
-	.switch button {
-		position: relative;
-		flex: none;
-		width: 36px;
-		height: 20px;
-		border-radius: 999px;
-		background: var(--rule-2);
-		transition: background var(--t-fast) var(--ease-out);
-	}
-	.switch button[aria-checked='true'] {
-		background: var(--accent);
-	}
-	.switch button span {
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		background: var(--card);
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-		transition: transform var(--t-fast) var(--ease-out);
-	}
-	.switch button[aria-checked='true'] span {
-		transform: translateX(16px);
 	}
 </style>

@@ -1,8 +1,9 @@
 // The files the uploader shares with the site, and how each is brought level. The site's copies
-// are the originals, read from the checkout of the site's source that WIDSITH_SITE names. The reader for the game's saved files is copied as it is. The flame is copied
-// with its opening comment replaced by one of this folder's own, since the site's comment speaks
-// of the site; the drawing and its motion are what must stay the same, and the test compares the
-// files with their opening comments set aside.
+// are the originals, read from the checkout of the site's source that WIDSITH_SITE names. The
+// reader for the game's saved files is copied as it is. The flame and the realm's label are copied
+// with their opening comments replaced by ones of this folder's own, since the site's comments
+// speak of the site; the drawing, its motion and the words are what must stay the same, and the
+// test compares the files with their opening comments set aside.
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,6 +25,18 @@ export const SHARED = [
 			'before any edge shows; `map={false}` draws the flame alone. Animation stops under reduced',
 			'motion. Copied from the site by `npm run shared`; a test fails if they drift.'
 		]
+	},
+	{
+		theirs: 'src/lib/present/realm.ts',
+		ours: '../src/shared/realm.ts',
+		comment: [
+			'A realm as a player reads it. WoW Forever has no realms a player picks: what the game reports',
+			"as the realm is Blizzard's internal name for the shard, with the type as its last word",
+			'("CAMWOW US1 Realm 3 PvE"). The player chose PvE and nothing else, so to them the type is the',
+			'realm, and that is the word the site and this window show; the recorded name stays what the',
+			"app matches files by, since the game names the file's folder with it. Any other realm is its",
+			'own name. Copied from the site by `npm run shared`; a test fails if they drift.'
+		]
 	}
 ];
 
@@ -42,12 +55,21 @@ export function theirsOf(file) {
 	return join(siteRoot(), file.theirs);
 }
 
-/** The opening comment of a Svelte script block: the `//` lines right after `<script lang="ts">`. */
-const OPENING = /^(<script lang="ts">\r?\n)((?:\t\/\/.*\r?\n)+)/;
+/**
+ * The opening comment: in a Svelte file the `//` lines right after `<script lang="ts">`, indented
+ * by a tab; in a TypeScript file the `//` lines the file starts with.
+ */
+const SVELTE_OPENING = /^(<script lang="ts">\n)((?:\t\/\/.*\n)+)/;
+const TS_OPENING = /^()((?:\/\/.*\n)+)/;
 
 /** A shared file's text as this folder keeps it: line endings level, the opening comment ours. */
 export function ours(text, comment) {
 	const level = text.replaceAll('\r\n', '\n');
 	if (!comment) return level;
-	return level.replace(OPENING, (_, open) => `${open}${comment.map((line) => `\t// ${line}`).join('\n')}\n`);
+	const svelte = level.startsWith('<script');
+	const [opening, indent] = svelte ? [SVELTE_OPENING, '\t'] : [TS_OPENING, ''];
+	return level.replace(
+		opening,
+		(_, open) => `${open}${comment.map((line) => `${indent}// ${line}`).join('\n')}\n`
+	);
 }

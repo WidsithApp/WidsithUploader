@@ -19,6 +19,13 @@ export const EARLIER_RECORDING_FILE = 'WoWJourney.lua';
 /** The saved table inside the file, under the addon's name and then its earlier name. */
 export const RECORDING_TABLES = ['WidsithDB', 'WoWJourneyDB'] as const;
 
+/**
+ * Version folders of games that have closed, whose recordings are never looked at again: the WoW
+ * Forever beta ended at the game's release. What they hold stays on disk, and what was sent stays
+ * on the site. Take a folder off the list if its game ever comes back.
+ */
+export const CLOSED_FLAVORS: readonly string[] = ['_classic_beta_'];
+
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 
@@ -29,8 +36,15 @@ export const TIMING = {
 	unreadableAfter: MINUTE,
 	/** How often the game's folders are looked for again. */
 	installs: 5 * MINUTE,
-	/** How long what the site said about the account is trusted. */
+	/**
+	 * What the site said about the account (which characters it keeps, each one's level and
+	 * sharing) is asked again after every send that went through, since the site read what was
+	 * sent; when the player looks at the window and the answer is older than `accountFresh`, since
+	 * a change made on the site should show when they come back to the window; and in any case
+	 * once it is older than `account`.
+	 */
 	account: 30 * MINUTE,
+	accountFresh: MINUTE,
 	/** After the site can't be reached: wait this long, doubling each time, up to `retryMax`. */
 	retry: 30 * SECOND,
 	retryMax: 10 * MINUTE,

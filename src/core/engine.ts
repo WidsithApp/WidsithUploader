@@ -21,7 +21,7 @@
 // Updates: a newer version is fetched when the site offers one and installed when the player asks,
 // or after the app has been idle for a while, never during a send.
 import { Api, Unlinked, type Fetch, type Me, type Sharing } from './api.ts';
-import { APP_NAME, EARLIER_RECORDING_FILE, SITE_NAME, TIMING } from './config.ts';
+import { APP_NAME, CLOSED_FLAVORS, EARLIER_RECORDING_FILE, SITE_NAME, TIMING } from './config.ts';
 import { countPictures, shotTimes } from './pictures.ts';
 import {
 	asEarlier,
@@ -957,12 +957,27 @@ export class Engine {
 		});
 	}
 
-	/** The window was shown: what was new or sent until now has been seen. */
+	/**
+	 * The window was shown, or came to the front: what was new or sent until now has been seen.
+	 * It is also when a change made on the site (Public chosen in the browser, say) should show,
+	 * so what the site said about each account is asked again when it is more than a minute old,
+	 * by a look that joins any already waiting. While uploading is paused the site is asked
+	 * nothing, as always.
+	 */
 	async looked(): Promise<void> {
 		this.#inView = true;
-		this.#state.lookedAt = this.#host.now();
+		const now = this.#host.now();
+		this.#state.lookedAt = now;
 		await this.#save();
 		this.#publish();
+		let stale = false;
+		for (const linked of this.#links.values()) {
+			if (now - linked.meAt > TIMING.accountFresh) {
+				linked.meDirty = true;
+				stale = true;
+			}
+		}
+		if (stale && !this.#state.paused) await this.tick();
 	}
 
 	/** The window was hidden again: an update may now go in by itself once the rest holds. */
@@ -1099,13 +1114,15 @@ export class Engine {
 		const roots = this.#roots();
 		if (refreshInstalls) {
 			const perRoot = await Promise.all(roots.map((r) => this.#host.addons(r).catch(() => [])));
-			this.#addons = perRoot.flat();
+			this.#addons = perRoot.flat().filter((addon) => !CLOSED_FLAVORS.includes(addon.flavor));
 		}
 
-		// Which recordings are there, and under which accounts.
+		// Which recordings are there, and under which accounts. A closed game's are left alone.
 		const scanned = await Promise.all(roots.map((r) => this.#host.scan(r).catch(() => [])));
 		const byPath = new Map<string, FoundFile>();
-		for (const file of scanned.flat()) byPath.set(file.path, file);
+		for (const file of scanned.flat()) {
+			if (!CLOSED_FLAVORS.includes(file.flavor)) byPath.set(file.path, file);
+		}
 		this.#found = [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 		for (const path of Object.keys(this.#state.files)) {
 			if (!byPath.has(path)) {
@@ -1442,7 +1459,10 @@ export class Engine {
 					? `${outcome.refused} ${outcome.refused === 1 ? 'session was' : 'sessions were'} different from the copy already kept, and set aside.`
 					: null;
 				if (guid) this.#state.restored = this.#state.restored.filter((g) => g !== guid);
-				if (sharing) await this.#askAccount(linked);
+				// The site has read what was sent: its reading of the character (its level, its
+				// time played) is what the card shows, so it is asked for now rather than at the
+				// next half hour. A first send also tells which characters it keeps.
+				await this.#askAccount(linked);
 				return;
 			}
 			if (outcome.sent > 0) sending.owesDone = true;

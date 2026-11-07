@@ -25,7 +25,9 @@
 	$effect(() => controller.subscribe((next) => (view = next)));
 
 	// The window is hidden to the tray rather than closed, so each time it is shown again the
-	// player is looking at it: what was new since the last look has now been seen.
+	// player is looking at it: what was new since the last look has now been seen. Coming back to
+	// it from another window (the browser, after choosing Public there) is a look too, and the
+	// app asks the site again when what it said is more than a minute old.
 	$effect(() => {
 		const look = () => {
 			if (document.visibilityState === 'visible') {
@@ -33,9 +35,16 @@
 				picked = null;
 			} else controller.left();
 		};
+		const front = () => {
+			if (document.visibilityState === 'visible') void controller.looked();
+		};
 		look();
 		document.addEventListener('visibilitychange', look);
-		return () => document.removeEventListener('visibilitychange', look);
+		window.addEventListener('focus', front);
+		return () => {
+			document.removeEventListener('visibilitychange', look);
+			window.removeEventListener('focus', front);
+		};
 	});
 
 	let tab = $state<Tab>('characters');

@@ -6,6 +6,7 @@
 	import { untrack } from 'svelte';
 	import { SITE_NAME } from '../core/config.ts';
 	import type { CharacterView, View } from '../core/engine.ts';
+	import { realmLabel } from '../shared/realm.ts';
 	import Card from './Card.svelte';
 	import Icon from './Icon.svelte';
 	import type { Controller, Shell } from './controller.ts';
@@ -115,8 +116,10 @@
 		showFlavor={(twice.get(`${character.name}|${character.realm}`) ?? 0) > 1}
 		paused={view.paused}
 		accountUrl="{shell.server}/account"
+		browser={view.browser}
 		onswitch={(on) => controller.setUploading(character.key, on)}
 		onopen={shell.open}
+		oncopy={shell.copy}
 		onpictures={shell.openScreenshots}
 	/>
 {/snippet}
@@ -188,7 +191,7 @@
 			</p>
 			<ul class="names">
 				{#each empty as character (character.key)}
-					<li>{character.name}{character.realm ? ` · ${character.realm}` : ''}</li>
+					<li>{[character.name, realmLabel(character.realm)].filter(Boolean).join(' · ')}</li>
 				{/each}
 			</ul>
 		</details>

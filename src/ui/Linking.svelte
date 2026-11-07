@@ -3,7 +3,7 @@
 	// for a player who would rather open it in another browser.
 
 	import { SITE_NAME } from '../core/config.ts';
-	import Icon from './Icon.svelte';
+	import OpenInBrowser from './OpenInBrowser.svelte';
 
 	let {
 		linking,
@@ -22,12 +22,6 @@
 		onreopen: () => void;
 		oncancel: () => void;
 	} = $props();
-
-	let copied = $state(false);
-	async function copy() {
-		copied = await oncopy(linking.verifyUrl);
-		if (copied) setTimeout(() => (copied = false), 2500);
-	}
 </script>
 
 <section class="sheet card">
@@ -47,11 +41,15 @@
 	<p class="display code figures">{linking.userCode}</p>
 	<p class="address">{linking.verifyUrl}</p>
 	<p class="actions">
-		<button type="button" class="btn-alt" onclick={copy}>{copied ? 'Copied' : 'Copy the link'}</button>
-		<button type="button" class="btn" onclick={onreopen}
-			>{linking.opened ? 'Open the page again' : `Open it in ${browser ?? 'my usual browser'}`}
-			<Icon name="out" size={13} /></button
-		>
+		<!-- The page must be opened where the player is signed in, so the browser is named. -->
+		<OpenInBrowser
+			words={linking.opened ? 'Open the page again' : 'Open it'}
+			url={linking.verifyUrl}
+			{browser}
+			main={false}
+			onopen={onreopen}
+			{oncopy}
+		/>
 		<button type="button" class="link quiet" onclick={oncancel}>Cancel</button>
 	</p>
 	{#if linking.opened}
@@ -98,7 +96,7 @@
 		gap: 10px 12px;
 		margin-top: 18px;
 	}
-	.actions .link {
+	.actions :global(.link) {
 		margin-left: 4px;
 	}
 	.aside {
